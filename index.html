@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Project Progress Rainbow</title>
+<style>
+:root { --rb: linear-gradient(90deg,#ff5b7f,#ff8a5c,#ffd166,#06d6a0,#118ab2,#9b5de5); }
+* { box-sizing: border-box; }
+body { margin:0; padding: var(--s3,16px); font-family: var(--font-primary-stack, Roboto, sans-serif); background: var(--bg, #fff); color: var(--text-color, #222); }
+.top { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+.top h1 { font-size:20px; margin:0; }
+.muted { color: var(--text-color-muted, #777); font-size:12px; }
+.controls { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.controls select, .controls label { font-size:13px; }
+.portfolio { background: var(--card-bg,#fff); border-radius: var(--card-border-radius,8px); box-shadow: var(--whiteframe-shadow-2dp,0 2px 6px rgba(0,0,0,.15)); padding:14px 16px; margin-bottom:16px; border:1px solid var(--divider-color, #e0e0e0); }
+.bar { height:14px; border-radius:999px; background: color-mix(in srgb, var(--text-color,#888) 12%, transparent); overflow:hidden; position:relative; }
+.bar > i { display:block; height:100%; width:0%; border-radius:999px; background: var(--rb); transition: width .45s var(--transition-standard, ease); }
+.bar.slim { height:8px; }
+.bar-wrap { display:flex; align-items:center; gap:10px; }
+.pct { font-variant-numeric: tabular-nums; font-weight:700; min-width:52px; text-align:right; }
+.grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(320px,1fr)); gap:14px; }
+.card { background: var(--card-bg,#fff); border:1px solid var(--divider-color,#e0e0e0); border-radius: var(--card-border-radius,8px); box-shadow: var(--whiteframe-shadow-1dp,0 1px 3px rgba(0,0,0,.12)); padding:14px 14px 12px; }
+.card.done { outline:2px solid #06d6a0; }
+.proj-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.dot { width:12px; height:12px; border-radius:50%; flex:none; background: var(--c-primary,#888); }
+.proj-head h2 { font-size:15px; margin:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.counts { font-size:12px; }
+.ms { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.mrow { font-size:13px; }
+.mrow .m-top { display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }
+.mrow .m-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mrow .m-pct { font-variant-numeric:tabular-nums; color: var(--text-color-muted,#777); }
+.mrow.done .m-name::after { content:" ✓"; color:#06d6a0; }
+details.prefs { margin-top:10px; font-size:12px; }
+button.refresh { cursor:pointer; }
+.empty { padding:24px; text-align:center; }
+.tasklink { cursor:pointer; text-decoration:underline dotted; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>🌈 Project Progress</h1>
+  <span class="muted" id="subtitle">per-project bars + milestones</span>
+  <div class="controls">
+    <label>Calc <select id="calcMode"><option value="count">task count</option><option value="time">time estimate</option></select></label>
+    <label><input type="checkbox" id="showBacklog" checked /> backlog</label>
+    <label><input type="checkbox" id="hideDone" /> hide 100%</label>
+    <button id="btnRefresh" class="refresh">↻ Refresh</button>
+  </div>
+</div>
+<div class="portfolio" id="portfolio" hidden>
+  <div class="muted">Overall portfolio</div>
+  <div class="bar-wrap"><div class="bar" style="flex:1"><i id="pfBar"></i></div><div class="pct" id="pfPct">–</div></div>
+  <div class="muted" id="pfCounts"></div>
+</div>
+<div class="grid" id="grid"></div>
+<div class="empty muted" id="empty" hidden>No projects found.</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { projects:[], tasksMap:{}, tagsMap:{}, prefs:{ calcMode:'count', showBacklog:true, hideDone:false } };
+
+async function loadPrefs(){
+  try { const raw = await PluginAPI.loadSyncedData('prefs'); if(raw){ Object.assign(state.prefs, JSON.parse(raw)); } } catch(e){}
+  $('calcMode').value = state.prefs.calcMode; $('showBacklog').checked = !!state.prefs.showBacklog; $('hideDone').checked = !!state.prefs.hideDone;
+}
+async function savePrefs(){
+  state.prefs = { calcMode: $('calcMode').value, showBacklog: $('showBacklog').checked, hideDone: $('hideDone').checked };
+  try { await PluginAPI.persistDataSynced(JSON.stringify(state.prefs),'prefs'); } catch(e){}
+  render();
+}
+
+async function fetchData(){
+  // Prefer single snapshot
+  try {
+    const s = await PluginAPI.getAppState();
+    if (s && s.projects) {
+      state.tasksMap = s.tasks || {}; state.tagsMap = s.tags || {};
+      state.projects = Object.values(s.projects);
+      return;
+    }
+  } catch(e){}
+  const [projects, tasks, tags] = await Promise.all([
+    PluginAPI.getAllProjects().catch(()=>[]),
+    PluginAPI.getTasks().catch(()=>[]),
+    (PluginAPI.getAllTags ? PluginAPI.getAllTags().catch(()=>[]) : Promise.resolve([])),
+  ]);
+  state.projects = projects; state.tasksMap = {}; (tasks||[]).forEach(t=>state.tasksMap[t.id]=t);
+  state.tagsMap = {}; (tags||[]).forEach(t=>state.tagsMap[t.id]=t);
+}
+
+function tasksForProject(p){
+  const ids = [...(p.taskIds||[])];
+  if (state.prefs.showBacklog) ids.push(...(p.backlogTaskIds||[]));
+  const out = [];
+  ids.forEach(id=>{ const t = state.tasksMap[id]; if(t) out.push(t); });
+  // include subtasks whose parent is in project but subtask id not listed
+  Object.values(state.tasksMap).forEach(t=>{
+    if (t.projectId===p.id && !ids.includes(t.id)) out.push(t);
+  });
+  // dedupe, drop deleted
+  const seen = new Set(); return out.filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; });
+}
+
+function progressOf(tasks){
+  if(!tasks.length) return { pct:0, done:0, total:0 };
+  if(state.prefs.calcMode==='time'){
+    let est=0, spent=0, doneN=0;
+    tasks.forEach(t=>{ const e=+t.timeEstimate||0; est+=e; spent+=Math.min(+t.timeSpent||0, e||+t.timeSpent||0); if(t.isDone) doneN++; });
+    if(est>0){ // done tasks contribute full estimate
+      let num=0; tasks.forEach(t=>{ num += t.isDone ? (+t.timeEstimate||0) : Math.min(+t.timeSpent||0, +t.timeEstimate||0); });
+      return { pct: Math.min(100, Math.round(num/est*100)), done:doneN, total:tasks.length, est, num };
+    }
+  }
+  const done = tasks.filter(t=>t.isDone).length;
+  return { pct: Math.round(done/tasks.length*100), done, total: tasks.length };
+}
+
+// Milestone grouping: [M:Name] prefix > parent epic > first tag > General
+function milestoneKey(t){
+  const m = /^\s*\[M\s*:\s*([^\]]+)\]/.exec(t.title||'');
+  if(m) return m[1].trim();
+  if(t.parentId && state.tasksMap[t.parentId]) return '⛰ ' + state.tasksMap[t.parentId].title.replace(/^\s*\[M\s*:[^\]]+\]\s*/,'').slice(0,60);
+  if(t.tagIds && t.tagIds.length){ const tag = state.tagsMap[t.tagIds[0]]; if(tag) return '🏷 ' + tag.title; }
+  return 'General';
+}
+function milestonesFor(tasks){
+  const g = new Map();
+  tasks.forEach(t=>{
+    // don't double-count epic parent itself as its own child-only group weirdness: keep it in its group
+    const k = milestoneKey(t);
+    if(!g.has(k)) g.set(k, []);
+    g.get(k).push(t);
+  });
+  return [...g.entries()].map(([name, ts])=>({ name, ...progressOf(ts), tasks: ts }))
+    .sort((a,b)=> a.pct-b.pct || b.total-a.total);
+}
+
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function render(){
+  const grid = $('grid'); grid.innerHTML='';
+  let projs = state.projects.filter(p=>!p.isArchived);
+  let allTasks = [];
+  projs.forEach(p=>{ const ts = tasksForProject(p); p._ts = ts; p._pg = progressOf(ts); allTasks.push(...ts); });
+  const pf = progressOf(allTasks);
+  $('portfolio').hidden = !projs.length;
+  $('pfBar').style.width = pf.pct+'%'; $('pfPct').textContent = pf.pct+'%';
+  $('pfCounts').textContent = `${pf.done}/${pf.total} tasks done across ${projs.length} projects`;
+  $('subtitle').textContent = `per-project bars + milestones · ${projs.length} projects`;
+  if(state.prefs.hideDone) projs = projs.filter(p=>p._pg.pct<100);
+  $('empty').hidden = !!projs.length;
+  // sort: least complete first, then title
+  projs.sort((a,b)=> a._pg.pct-b._pg.pct || a.title.localeCompare(b.title));
+  projs.forEach(p=>{
+    const color = (p.theme && p.theme.primary) || 'var(--c-primary)';
+    const card = document.createElement('div');
+    card.className = 'card' + (p._pg.pct===100?' done':'');
+    const ms = milestonesFor(p._ts);
+    card.innerHTML = `
+      <div class="proj-head"><span class="dot" style="background:${esc(color)}"></span><h2 title="${esc(p.title)}">${esc(p.title)}</h2><span class="counts muted">${p._pg.done}/${p._pg.total}</span></div>
+      <div class="bar-wrap"><div class="bar" style="flex:1"><i style="width:${p._pg.pct}%${p.theme&&p.theme.primary?`;background:${esc(color)}`:''}"></i></div><div class="pct">${p._pg.pct}%</div></div>
+      <div class="ms">${ms.map(m=>`
+        <div class="mrow ${m.pct===100?'done':''}">
+          <div class="m-top"><span class="m-name" title="${esc(m.name)}">${esc(m.name)}</span><span class="m-pct">${m.done}/${m.total} · ${m.pct}%</span></div>
+          <div class="bar slim"><i style="width:${m.pct}%"></i></div>
+        </div>`).join('') || '<div class="muted">No tasks yet.</div>'}
+      </div>`;
+    // use project color for main bar only if set, milestones keep rainbow
+    grid.appendChild(card);
+  });
+}
+
+async function refresh(silent){
+  try { await fetchData(); render(); }
+  catch(e){ console.error(e); if(!silent) try{ PluginAPI.showSnack({msg:'Progress: load failed', type:'ERROR'});}catch{} }
+}
+
+$('btnRefresh').onclick = ()=>refresh(false);
+$('calcMode').onchange = savePrefs; $('showBacklog').onchange = savePrefs; $('hideDone').onchange = savePrefs;
+
+(async function init(){
+  await loadPrefs(); await refresh(true);
+  try {
+    const H = PluginAPI.Hooks || {};
+    ['taskComplete','taskUpdate','taskDelete','anyTaskUpdate','projectListUpdate'].forEach(h=>{
+      try{ PluginAPI.registerHook(H[h]||h, ()=>refresh(true)); }catch{}
+    });
+  } catch{}
+  setInterval(()=>refresh(true), 8000);
+})();
+</script>
+</body>
+</html>

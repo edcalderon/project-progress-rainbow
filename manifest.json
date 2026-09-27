@@ -1,0 +1,15 @@
+{
+  "id": "project-progress-rainbow",
+  "name": "Project Progress Rainbow",
+  "version": "1.0.0",
+  "description": "Per-project progress view with overall bar + auto milestones (epic / tag / [M:Name]), rainbow gradient, theme-aware.",
+  "manifestVersion": 1,
+  "minSupVersion": "14.0.0",
+  "author": "edcalderon",
+  "homepage": "https://github.com/edcalderon/project-progress-rainbow",
+  "icon": "icon.svg",
+  "iFrame": true,
+  "sidePanel": false,
+  "permissions": [],
+  "hooks": ["taskComplete", "taskUpdate", "taskDelete", "anyTaskUpdate", "projectListUpdate"]
+}
