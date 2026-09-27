@@ -43,6 +43,20 @@
       "minimum": 1,
       "maximum": 10,
       "default": 4
+    },
+    "layout": {
+      "type": "string",
+      "title": "Project layout",
+      "description": "Grid cards, large list, or compact rows.",
+      "enum": ["grid", "list", "rows"],
+      "default": "grid"
+    },
+    "sortBy": {
+      "type": "string",
+      "title": "Project sort order",
+      "description": "Default ordering of project cards.",
+      "enum": ["progress-asc", "progress-desc", "name", "tasks-desc", "tasks-asc"],
+      "default": "progress-asc"
     }
   }
 }
