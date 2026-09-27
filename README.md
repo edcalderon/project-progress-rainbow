@@ -72,7 +72,7 @@ Versions are managed with [@edcalderon/versioning](https://www.npmjs.com/package
 ```bash
 npm run release:minor   # or release:patch / release:major
 git add -A && git commit -m "feat: ..."   # pre-commit hook scans for secrets
-npx -y @edcalderon/versioning@1.5.13 guard-tag v1.1.0
+npx -y @edcalderon/versioning@1.5.13 guard-tag -t v1.1.0
 git tag -a v1.1.0 -m "v1.1.0" && git push origin main v1.1.0
 zip -j project-progress-rainbow.zip manifest.json plugin.js index.html icon.svg
 gh release create v1.1.0 project-progress-rainbow.zip --title "v1.1.0" --notes "..."
