@@ -1,0 +1,9 @@
+#!/bin/sh
+
+
+# === secrets-check: start ===
+# NOTE: must use the fully-scoped package specifier. Bare `npx versioning`
+# resolves a different registry package and fails, silently passing the hook.
+echo "🔒 Running secrets check…"
+npx -y @edcalderon/versioning@1.5.13 check-secrets
+# === secrets-check: end ===

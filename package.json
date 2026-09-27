@@ -1,0 +1,19 @@
+{
+  "name": "project-progress-rainbow",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Super Productivity plugin: per-project progress bars with auto milestones, rainbow gradient, theme-aware.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edcalderon/project-progress-rainbow.git"
+  },
+  "scripts": {
+    "release:patch": "npx -y @edcalderon/versioning@1.5.13 bump patch --no-commit --no-tag && node scripts/sync-manifest.mjs && npx -y @edcalderon/versioning@1.5.13 update-readme",
+    "release:minor": "npx -y @edcalderon/versioning@1.5.13 bump minor --no-commit --no-tag && node scripts/sync-manifest.mjs && npx -y @edcalderon/versioning@1.5.13 update-readme",
+    "release:major": "npx -y @edcalderon/versioning@1.5.13 bump major --no-commit --no-tag && node scripts/sync-manifest.mjs && npx -y @edcalderon/versioning@1.5.13 update-readme",
+    "sync-manifest": "node scripts/sync-manifest.mjs",
+    "update-readme": "npx -y @edcalderon/versioning@1.5.13 update-readme",
+    "check-secrets": "npx -y @edcalderon/versioning@1.5.13 check-secrets",
+    "setup-hooks": "git config core.hooksPath .husky/_"
+  }
+}

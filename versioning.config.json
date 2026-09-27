@@ -1,0 +1,59 @@
+{
+  "rootPackageJson": "package.json",
+  "packages": [],
+  "changelogFile": "CHANGELOG.md",
+  "conventionalCommits": true,
+  "syncDependencies": false,
+  "ignorePackages": [],
+  "extensions": [],
+  "extensionConfig": {
+    "secrets-check": {
+      "enabled": true
+    },
+    "readme-maintainer": {
+      "releasesUrl": "https://github.com/edcalderon/project-progress-rainbow/releases"
+    }
+  },
+  "branchAwareness": {
+    "enabled": false,
+    "defaultBranch": "main",
+    "branches": {
+      "main": {
+        "versionFormat": "semantic",
+        "tagFormat": "v{version}",
+        "syncFiles": [
+          "package.json"
+        ],
+        "environment": "production",
+        "bumpStrategy": "semantic"
+      },
+      "develop": {
+        "versionFormat": "dev",
+        "tagFormat": "v{version}",
+        "syncFiles": [
+          "version.development.json"
+        ],
+        "environment": "development",
+        "bumpStrategy": "dev-build"
+      },
+      "feature/*": {
+        "versionFormat": "feature",
+        "tagFormat": "v{version}",
+        "syncFiles": [
+          "version.development.json"
+        ],
+        "environment": "development",
+        "bumpStrategy": "feature-branch"
+      },
+      "hotfix/*": {
+        "versionFormat": "hotfix",
+        "tagFormat": "v{version}",
+        "syncFiles": [
+          "version.development.json"
+        ],
+        "environment": "development",
+        "bumpStrategy": "hotfix"
+      }
+    }
+  }
+}

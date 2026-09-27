@@ -20,125 +20,235 @@ body { margin:0; padding: var(--s3,16px); font-family: var(--font-primary-stack,
 .pct { font-variant-numeric: tabular-nums; font-weight:700; min-width:52px; text-align:right; }
 .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(320px,1fr)); gap:14px; }
 .card { background: var(--card-bg,#fff); border:1px solid var(--divider-color,#e0e0e0); border-radius: var(--card-border-radius,8px); box-shadow: var(--whiteframe-shadow-1dp,0 1px 3px rgba(0,0,0,.12)); padding:14px 14px 12px; }
+.card.clickable { cursor:pointer; }
+.card.clickable:hover { border-color: var(--c-primary,#888); box-shadow: var(--whiteframe-shadow-2dp,0 2px 6px rgba(0,0,0,.2)); }
 .card.done { outline:2px solid #06d6a0; }
 .proj-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
 .dot { width:12px; height:12px; border-radius:50%; flex:none; background: var(--c-primary,#888); }
 .proj-head h2 { font-size:15px; margin:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .counts { font-size:12px; }
+.obj-snippet { font-size:12px; margin-top:8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.deadline-chip { display:inline-block; font-size:11px; margin-top:6px; padding:2px 8px; border-radius:999px; border:1px solid var(--divider-color,#e0e0e0); }
+.deadline-chip.over { border-color:#ff5b7f; color:#ff5b7f; }
 .ms { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
 .mrow { font-size:13px; }
 .mrow .m-top { display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }
 .mrow .m-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mrow .m-pct { font-variant-numeric:tabular-nums; color: var(--text-color-muted,#777); }
 .mrow.done .m-name::after { content:" ✓"; color:#06d6a0; }
-details.prefs { margin-top:10px; font-size:12px; }
-button.refresh { cursor:pointer; }
 .empty { padding:24px; text-align:center; }
-.tasklink { cursor:pointer; text-decoration:underline dotted; }
+/* detail */
+.d-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.d-head h1 { font-size:18px; margin:0; flex:1; }
+.d-sec { background: var(--card-bg,#fff); border:1px solid var(--divider-color,#e0e0e0); border-radius: var(--card-border-radius,8px); padding:12px 14px; margin-bottom:12px; }
+.d-sec h3 { margin:0 0 8px; font-size:14px; }
+.d-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+input[type=text], input[type=date], input[type=number], textarea, select { background: var(--bg,#fff); color: var(--text-color,#222); border:1px solid var(--divider-color,#ccc); border-radius:6px; padding:6px 8px; font-size:13px; font-family:inherit; }
+textarea { width:100%; min-height:56px; resize:vertical; }
+button { cursor:pointer; }
+.tagchip { display:inline-block; font-size:12px; padding:2px 10px; margin:2px 4px 2px 0; border-radius:999px; border:1px solid var(--divider-color,#ccc); cursor:pointer; }
+.tagchip.on { border-color: var(--c-primary,#888); font-weight:700; }
+.trow { display:flex; gap:8px; align-items:flex-start; padding:8px 4px; border-top:1px solid var(--divider-color,#e0e0e0); font-size:13px; }
+.trow:first-of-type { border-top:none; }
+.trow .tt { flex:1; min-width:0; }
+.trow .tt .t-title { cursor:pointer; overflow:hidden; text-overflow:ellipsis; }
+.trow.done .t-title { text-decoration:line-through; opacity:.65; }
+.tmeta { font-size:11px; }
+.trow select { font-size:11px; padding:2px 4px; max-width:130px; }
+.est-in { width:56px; }
+.sprint { border:1px solid var(--divider-color,#e0e0e0); border-radius:8px; padding:8px 10px; margin-top:8px; }
+.sprint .s-top { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+.sprint .s-name { font-weight:700; font-size:13px; }
+.group-h { font-size:12px; font-weight:700; margin:12px 0 2px; text-transform:uppercase; letter-spacing:.04em; }
+.kv { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; margin-top:6px; }
+.kv b { font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
-<div class="top">
-  <h1>🌈 Project Progress</h1>
-  <span class="muted" id="subtitle">per-project bars + milestones</span>
-  <div class="controls">
-    <label>Calc <select id="calcMode"><option value="count">task count</option><option value="time">time estimate</option></select></label>
-    <label><input type="checkbox" id="showBacklog" checked /> backlog</label>
-    <label><input type="checkbox" id="hideDone" /> hide 100%</label>
-    <button id="btnRefresh" class="refresh">↻ Refresh</button>
+<!-- ============ GRID VIEW ============ -->
+<div id="viewGrid">
+  <div class="top">
+    <h1>🌈 Project Progress</h1>
+    <span class="muted" id="subtitle">per-project bars + milestones</span>
+    <div class="controls">
+      <label>Calc <select id="calcMode"><option value="count">task count</option><option value="time">time estimate</option></select></label>
+      <label><input type="checkbox" id="showBacklog" checked /> backlog</label>
+      <label><input type="checkbox" id="hideDone" /> hide 100%</label>
+      <button id="btnRefresh">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="portfolio" id="portfolio" hidden>
+    <div class="muted">Overall portfolio</div>
+    <div class="bar-wrap"><div class="bar" style="flex:1"><i id="pfBar"></i></div><div class="pct" id="pfPct">–</div></div>
+    <div class="muted" id="pfCounts"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="empty muted" id="empty" hidden>No projects found.</div>
+</div>
+
+<!-- ============ DETAIL VIEW ============ -->
+<div id="viewDetail" hidden>
+  <div class="d-head">
+    <button id="btnBack">← All projects</button>
+    <span class="dot" id="dDot"></span>
+    <h1 id="dTitle">–</h1>
+    <span class="muted" id="dCounts"></span>
+    <button id="btnRefresh2">↻</button>
+  </div>
+  <div class="portfolio">
+    <div class="bar-wrap"><div class="bar" style="flex:1"><i id="dBar"></i></div><div class="pct" id="dPct">–</div></div>
+    <div class="muted" id="dSub"></div>
+  </div>
+
+  <div class="d-sec">
+    <h3>🎯 Final objective</h3>
+    <textarea id="fObjective" placeholder="What does 'done' mean for this project?"></textarea>
+    <div class="d-row">
+      <label class="muted">Deadline <input type="date" id="fDeadline" /></label>
+      <label class="muted">Time budget (h) <input type="number" id="fBudget" min="0" step="0.5" style="width:80px" /></label>
+      <button id="btnSaveGoal" class="btn-primary">Save</button>
+      <span class="muted" id="goalMsg"></span>
+    </div>
+  </div>
+
+  <div class="d-sec">
+    <h3>⏱ Times</h3>
+    <div class="kv" id="timeKv"></div>
+    <div class="bar-wrap" style="margin-top:8px"><div class="bar slim" style="flex:1"><i id="timeBar"></i></div></div>
+    <div class="muted" id="timeSub" style="margin-top:4px"></div>
+  </div>
+
+  <div class="d-sec">
+    <h3>🏃 Sprints</h3>
+    <div id="sprintList"></div>
+    <div class="d-row">
+      <input type="text" id="sTitle" placeholder="Sprint title" />
+      <input type="date" id="sStart" /> <input type="date" id="sEnd" />
+      <button id="btnAddSprint">+ Add sprint</button>
+    </div>
+  </div>
+
+  <div class="d-sec">
+    <h3>⛰ Milestones</h3>
+    <div id="msList"></div>
+    <div class="d-row">
+      <input type="text" id="mTitle" placeholder="New milestone title" />
+      <button id="btnAddMs">+ Add milestone</button>
+      <span class="muted">Tip: tasks titled <b>[M: Name]</b> auto-join milestone “Name”. Assign others via the task rows below.</span>
+    </div>
+  </div>
+
+  <div class="d-sec">
+    <h3>🏷 Tags</h3>
+    <div id="tagRow"></div>
+  </div>
+
+  <div class="d-sec">
+    <h3>📋 Tasks <span class="muted" id="taskCount"></span></h3>
+    <div class="d-row">
+      <label class="muted"><input type="checkbox" id="fHideDone" /> hide done</label>
+      <input type="text" id="fSearch" placeholder="Filter tasks…" style="flex:1;min-width:140px" />
+    </div>
+    <div id="taskGroups"></div>
+    <div class="d-row">
+      <input type="text" id="newTaskTitle" placeholder="New task title…" style="flex:1;min-width:180px" />
+      <button id="btnAddTask">+ Add task</button>
+    </div>
   </div>
 </div>
-<div class="portfolio" id="portfolio" hidden>
-  <div class="muted">Overall portfolio</div>
-  <div class="bar-wrap"><div class="bar" style="flex:1"><i id="pfBar"></i></div><div class="pct" id="pfPct">–</div></div>
-  <div class="muted" id="pfCounts"></div>
-</div>
-<div class="grid" id="grid"></div>
-<div class="empty muted" id="empty" hidden>No projects found.</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const state = { projects:[], tasksMap:{}, tagsMap:{}, prefs:{ calcMode:'count', showBacklog:true, hideDone:false } };
+const MS_PER_H = 3600000;
+const state = {
+  projects: [], tasksMap: {}, tagsMap: {},
+  prefs: { calcMode: 'count', showBacklog: true, hideDone: false },
+  meta: {}, // projectId -> { objective, deadline, timeBudgetH, manualMs:[{id,title}], taskMs:{taskId:msId|'auto'}, sprints:[{id,title,start,end,taskIds:[]}] }
+  sel: null, tagFilter: null, msFilter: null, hideDoneTasks: false, search: ''
+};
+const uid = (p) => p + '_' + Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36);
+const esc = (s) => (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const h1 = (ms) => ms==null||isNaN(ms) ? '–' : (+ms/MS_PER_H).toFixed(1)+'h';
+const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function snack(msg, type){ try{ PluginAPI.showSnack({msg, type:type||'INFO'});}catch(e){} }
 
+/* ---------- prefs + meta ---------- */
 async function loadPrefs(){
-  try { const raw = await PluginAPI.loadSyncedData('prefs'); if(raw){ Object.assign(state.prefs, JSON.parse(raw)); } } catch(e){}
+  try { const raw = await PluginAPI.loadSyncedData('prefs'); if(raw) Object.assign(state.prefs, JSON.parse(raw)); } catch(e){}
   $('calcMode').value = state.prefs.calcMode; $('showBacklog').checked = !!state.prefs.showBacklog; $('hideDone').checked = !!state.prefs.hideDone;
 }
 async function savePrefs(){
   state.prefs = { calcMode: $('calcMode').value, showBacklog: $('showBacklog').checked, hideDone: $('hideDone').checked };
   try { await PluginAPI.persistDataSynced(JSON.stringify(state.prefs),'prefs'); } catch(e){}
-  render();
+  renderGrid();
 }
+async function loadMeta(){ try { const raw = await PluginAPI.loadSyncedData('projectMeta'); if(raw) state.meta = JSON.parse(raw)||{}; } catch(e){ state.meta = {}; } }
+let metaT = null;
+function saveMeta(){
+  clearTimeout(metaT);
+  metaT = setTimeout(async ()=>{ try { await PluginAPI.persistDataSynced(JSON.stringify(state.meta),'projectMeta'); } catch(e){ snack('Save failed','ERROR'); } }, 300);
+}
+function pm(pid){ if(!state.meta[pid]) state.meta[pid] = { objective:'', deadline:'', timeBudgetH:'', manualMs:[], taskMs:{}, sprints:[] }; const m = state.meta[pid]; m.manualMs = m.manualMs||[]; m.taskMs = m.taskMs||{}; m.sprints = m.sprints||[]; return m; }
 
+/* ---------- data ---------- */
 async function fetchData(){
-  // Prefer single snapshot
   try {
     const s = await PluginAPI.getAppState();
-    if (s && s.projects) {
-      state.tasksMap = s.tasks || {}; state.tagsMap = s.tags || {};
-      state.projects = Object.values(s.projects);
-      return;
-    }
+    if (s && s.projects) { state.tasksMap = s.tasks||{}; state.tagsMap = s.tags||{}; state.projects = Object.values(s.projects); return; }
   } catch(e){}
   const [projects, tasks, tags] = await Promise.all([
     PluginAPI.getAllProjects().catch(()=>[]),
     PluginAPI.getTasks().catch(()=>[]),
     (PluginAPI.getAllTags ? PluginAPI.getAllTags().catch(()=>[]) : Promise.resolve([])),
   ]);
-  state.projects = projects; state.tasksMap = {}; (tasks||[]).forEach(t=>state.tasksMap[t.id]=t);
+  state.projects = projects||[]; state.tasksMap = {}; (tasks||[]).forEach(t=>state.tasksMap[t.id]=t);
   state.tagsMap = {}; (tags||[]).forEach(t=>state.tagsMap[t.id]=t);
 }
-
 function tasksForProject(p){
   const ids = [...(p.taskIds||[])];
   if (state.prefs.showBacklog) ids.push(...(p.backlogTaskIds||[]));
   const out = [];
   ids.forEach(id=>{ const t = state.tasksMap[id]; if(t) out.push(t); });
-  // include subtasks whose parent is in project but subtask id not listed
-  Object.values(state.tasksMap).forEach(t=>{
-    if (t.projectId===p.id && !ids.includes(t.id)) out.push(t);
-  });
-  // dedupe, drop deleted
+  Object.values(state.tasksMap).forEach(t=>{ if (t.projectId===p.id && !ids.includes(t.id)) out.push(t); });
   const seen = new Set(); return out.filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; });
 }
-
 function progressOf(tasks){
   if(!tasks.length) return { pct:0, done:0, total:0 };
   if(state.prefs.calcMode==='time'){
-    let est=0, spent=0, doneN=0;
-    tasks.forEach(t=>{ const e=+t.timeEstimate||0; est+=e; spent+=Math.min(+t.timeSpent||0, e||+t.timeSpent||0); if(t.isDone) doneN++; });
-    if(est>0){ // done tasks contribute full estimate
-      let num=0; tasks.forEach(t=>{ num += t.isDone ? (+t.timeEstimate||0) : Math.min(+t.timeSpent||0, +t.timeEstimate||0); });
-      return { pct: Math.min(100, Math.round(num/est*100)), done:doneN, total:tasks.length, est, num };
-    }
+    let est=0; tasks.forEach(t=>{ est += +t.timeEstimate||0; });
+    if(est>0){ let num=0, doneN=0; tasks.forEach(t=>{ num += t.isDone ? (+t.timeEstimate||0) : Math.min(+t.timeSpent||0, +t.timeEstimate||0); if(t.isDone) doneN++; }); return { pct: Math.min(100,Math.round(num/est*100)), done:doneN, total:tasks.length }; }
   }
   const done = tasks.filter(t=>t.isDone).length;
   return { pct: Math.round(done/tasks.length*100), done, total: tasks.length };
 }
-
-// Milestone grouping: [M:Name] prefix > parent epic > first tag > General
-function milestoneKey(t){
+function autoMsName(t){
   const m = /^\s*\[M\s*:\s*([^\]]+)\]/.exec(t.title||'');
   if(m) return m[1].trim();
   if(t.parentId && state.tasksMap[t.parentId]) return '⛰ ' + state.tasksMap[t.parentId].title.replace(/^\s*\[M\s*:[^\]]+\]\s*/,'').slice(0,60);
   if(t.tagIds && t.tagIds.length){ const tag = state.tagsMap[t.tagIds[0]]; if(tag) return '🏷 ' + tag.title; }
   return 'General';
 }
-function milestonesFor(tasks){
-  const g = new Map();
+function msGroups(p, tasks){
+  const m = pm(p.id);
+  const byId = {}; m.manualMs.forEach(x=>byId[x.id]=x.title);
+  const g = new Map(); // name -> {name, manualId, tasks[]}
+  const ensure = (name, manualId) => { if(!g.has(name)) g.set(name,{name, manualId:manualId||null, tasks:[]}); return g.get(name); };
+  m.manualMs.forEach(x=>ensure(x.title, x.id));
   tasks.forEach(t=>{
-    // don't double-count epic parent itself as its own child-only group weirdness: keep it in its group
-    const k = milestoneKey(t);
-    if(!g.has(k)) g.set(k, []);
-    g.get(k).push(t);
+    const ov = m.taskMs[t.id];
+    if(ov && byId[ov]) { ensure(byId[ov], ov).tasks.push(t); return; }
+    ensure(autoMsName(t), null).tasks.push(t);
   });
-  return [...g.entries()].map(([name, ts])=>({ name, ...progressOf(ts), tasks: ts }))
-    .sort((a,b)=> a.pct-b.pct || b.total-a.total);
+  return [...g.values()].map(x=>({ ...x, ...progressOf(x.tasks) })).sort((a,b)=> a.pct-b.pct || b.total-a.total);
+}
+function deadlineChip(m){
+  if(!m.deadline) return '';
+  const over = m.deadline < todayStr();
+  return `<span class="deadline-chip ${over?'over':''}">📅 ${esc(m.deadline)}${over?' · overdue':''}</span>`;
 }
 
-function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
-function render(){
+/* ---------- grid ---------- */
+function renderGrid(){
   const grid = $('grid'); grid.innerHTML='';
   let projs = state.projects.filter(p=>!p.isArchived);
   let allTasks = [];
@@ -147,40 +257,270 @@ function render(){
   $('portfolio').hidden = !projs.length;
   $('pfBar').style.width = pf.pct+'%'; $('pfPct').textContent = pf.pct+'%';
   $('pfCounts').textContent = `${pf.done}/${pf.total} tasks done across ${projs.length} projects`;
-  $('subtitle').textContent = `per-project bars + milestones · ${projs.length} projects`;
+  $('subtitle').textContent = `per-project bars + milestones · ${projs.length} projects — click a card for details`;
   if(state.prefs.hideDone) projs = projs.filter(p=>p._pg.pct<100);
   $('empty').hidden = !!projs.length;
-  // sort: least complete first, then title
   projs.sort((a,b)=> a._pg.pct-b._pg.pct || a.title.localeCompare(b.title));
   projs.forEach(p=>{
     const color = (p.theme && p.theme.primary) || 'var(--c-primary)';
+    const m = pm(p.id);
+    const ms = msGroups(p, p._ts).slice(0,4);
     const card = document.createElement('div');
-    card.className = 'card' + (p._pg.pct===100?' done':'');
-    const ms = milestonesFor(p._ts);
+    card.className = 'card clickable' + (p._pg.pct===100?' done':'');
+    card.tabIndex = 0; card.setAttribute('role','button');
     card.innerHTML = `
       <div class="proj-head"><span class="dot" style="background:${esc(color)}"></span><h2 title="${esc(p.title)}">${esc(p.title)}</h2><span class="counts muted">${p._pg.done}/${p._pg.total}</span></div>
       <div class="bar-wrap"><div class="bar" style="flex:1"><i style="width:${p._pg.pct}%${p.theme&&p.theme.primary?`;background:${esc(color)}`:''}"></i></div><div class="pct">${p._pg.pct}%</div></div>
-      <div class="ms">${ms.map(m=>`
-        <div class="mrow ${m.pct===100?'done':''}">
-          <div class="m-top"><span class="m-name" title="${esc(m.name)}">${esc(m.name)}</span><span class="m-pct">${m.done}/${m.total} · ${m.pct}%</span></div>
-          <div class="bar slim"><i style="width:${m.pct}%"></i></div>
+      ${m.objective?`<div class="obj-snippet muted">🎯 ${esc(m.objective)}</div>`:''}
+      ${deadlineChip(m)}
+      <div class="ms">${ms.map(x=>`
+        <div class="mrow ${x.pct===100?'done':''}">
+          <div class="m-top"><span class="m-name" title="${esc(x.name)}">${esc(x.name)}</span><span class="m-pct">${x.done}/${x.total} · ${x.pct}%</span></div>
+          <div class="bar slim"><i style="width:${x.pct}%"></i></div>
         </div>`).join('') || '<div class="muted">No tasks yet.</div>'}
       </div>`;
-    // use project color for main bar only if set, milestones keep rainbow
+    card.onclick = ()=>openProject(p.id);
+    card.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openProject(p.id); } };
     grid.appendChild(card);
   });
 }
 
-async function refresh(silent){
-  try { await fetchData(); render(); }
-  catch(e){ console.error(e); if(!silent) try{ PluginAPI.showSnack({msg:'Progress: load failed', type:'ERROR'});}catch{} }
+/* ---------- detail ---------- */
+function curProject(){ return state.projects.find(p=>p.id===state.sel); }
+function openProject(pid){
+  state.sel = pid; state.tagFilter = null; state.msFilter = null; state.hideDoneTasks = false; state.search = '';
+  $('fHideDone').checked = false; $('fSearch').value = '';
+  $('viewGrid').hidden = true; $('viewDetail').hidden = false;
+  renderDetail();
+}
+function closeDetail(){ state.sel = null; $('viewDetail').hidden = true; $('viewGrid').hidden = false; renderGrid(); }
+
+function filteredTasks(p){
+  let ts = tasksForProject(p);
+  const m = pm(p.id);
+  if(state.msFilter){
+    ts = ts.filter(t=>{
+      const ov = m.taskMs[t.id];
+      const name = (ov && m.manualMs.find(x=>x.id===ov)) ? m.manualMs.find(x=>x.id===ov).title : autoMsName(t);
+      return name === state.msFilter;
+    });
+  }
+  if(state.tagFilter) ts = ts.filter(t=>(t.tagIds||[]).includes(state.tagFilter));
+  if(state.hideDoneTasks) ts = ts.filter(t=>!t.isDone);
+  if(state.search){ const q = state.search.toLowerCase(); ts = ts.filter(t=>(t.title||'').toLowerCase().includes(q)); }
+  return ts;
 }
 
+function renderDetail(){
+  const p = curProject(); if(!p){ closeDetail(); return; }
+  const color = (p.theme && p.theme.primary) || 'var(--c-primary)';
+  const ts = tasksForProject(p);
+  const pg = progressOf(ts);
+  const m = pm(p.id);
+  $('dDot').style.background = color;
+  $('dTitle').textContent = p.title;
+  $('dCounts').textContent = `${pg.done}/${pg.total} done`;
+  $('dBar').style.width = pg.pct+'%'; if(p.theme&&p.theme.primary) $('dBar').style.background = color; else $('dBar').style.background = '';
+  $('dPct').textContent = pg.pct+'%';
+  $('dSub').textContent = `${ts.filter(t=>t.isDone).length}/${ts.length} tasks · ${state.prefs.calcMode} mode` + (m.deadline?` · 📅 ${m.deadline}`:'');
+  // goal form
+  if(document.activeElement!==$('fObjective')) $('fObjective').value = m.objective||'';
+  if(document.activeElement!==$('fDeadline')) $('fDeadline').value = m.deadline||'';
+  if(document.activeElement!==$('fBudget')) $('fBudget').value = m.timeBudgetH||'';
+  // times
+  let est=0, spent=0; ts.forEach(t=>{ est+=+t.timeEstimate||0; spent+=+t.timeSpent||0; });
+  const budgetMs = parseFloat(m.timeBudgetH)>0 ? parseFloat(m.timeBudgetH)*MS_PER_H : 0;
+  $('timeKv').innerHTML = `<span>Estimated <b>${h1(est)}</b></span><span>Spent <b>${h1(spent)}</b></span><span>Remaining <b>${h1(Math.max(0,est-spent))}</b></span>${budgetMs?`<span>Budget <b>${h1(budgetMs)}</b></span>`:''}`;
+  const denom = budgetMs||est||0;
+  $('timeBar').style.width = denom? Math.min(100,Math.round(spent/denom*100))+'%' : '0%';
+  $('timeSub').textContent = denom? `${h1(spent)} of ${h1(denom)}${budgetMs?' budget':' estimated'} used` : 'No estimates yet — set time estimates on tasks to track this.';
+  renderSprints(p, ts); renderMs(p, ts); renderTags(p, ts); renderTaskGroups(p);
+}
+
+function renderSprints(p, ts){
+  const m = pm(p.id);
+  const el = $('sprintList'); el.innerHTML = m.sprints.length? '' : '<div class="muted">No sprints yet. Sprints group tasks into time-boxed pushes — assign tasks via the dropdowns in the task list.</div>';
+  m.sprints.forEach(s=>{
+    const sts = ts.filter(t=>(s.taskIds||[]).includes(t.id));
+    const pg = progressOf(sts);
+    const d = document.createElement('div'); d.className = 'sprint';
+    d.innerHTML = `
+      <div class="s-top"><span class="s-name">${esc(s.title)}</span><span class="muted">${esc(s.start||'')} → ${esc(s.end||'')} · ${pg.done}/${pg.total} · ${pg.pct}%</span></div>
+      <div class="bar-wrap" style="margin-top:6px"><div class="bar slim" style="flex:1"><i style="width:${pg.pct}%"></i></div></div>
+      <div class="d-row"><button data-del="${s.id}">Delete</button><span class="muted">${sts.length} tasks assigned</span></div>`;
+    d.querySelector('[data-del]').onclick = ()=>{ m.sprints = m.sprints.filter(x=>x.id!==s.id); saveMeta(); renderDetail(); };
+    el.appendChild(d);
+  });
+}
+
+function renderMs(p, ts){
+  const m = pm(p.id);
+  const groups = msGroups(p, ts);
+  const el = $('msList'); el.innerHTML='';
+  groups.forEach(g=>{
+    const row = document.createElement('div'); row.className = 'mrow'+(g.pct===100?' done':'');
+    row.innerHTML = `
+      <div class="m-top"><span class="m-name" title="${esc(g.name)}">${esc(g.name)}${g.manualId?' ✎':''}</span>
+      <span><span class="m-pct">${g.done}/${g.total} · ${g.pct}%</span>
+      ${g.manualId?` <button data-f="1">filter</button> <button data-r="1">rename</button> <button data-d="1">✕</button>`:` <button data-f="1">filter</button>`}</span></div>
+      <div class="bar slim"><i style="width:${g.pct}%"></i></div>`;
+    row.querySelector('[data-f]').onclick = ()=>{ state.msFilter = state.msFilter===g.name? null : g.name; renderTags(p, ts); renderTaskGroups(p); };
+    if(g.manualId){
+      row.querySelector('[data-r]').onclick = ()=>{
+        const v = prompt('Rename milestone', g.name); if(!v||!v.trim()) return;
+        m.manualMs.find(x=>x.id===g.manualId).title = v.trim(); saveMeta(); renderDetail();
+      };
+      row.querySelector('[data-d]').onclick = ()=>{
+        if(!confirm(`Delete milestone "${g.name}"? Tasks fall back to auto grouping.`)) return;
+        m.manualMs = m.manualMs.filter(x=>x.id!==g.manualId);
+        Object.keys(m.taskMs).forEach(k=>{ if(m.taskMs[k]===g.manualId) m.taskMs[k]='auto'; });
+        if(state.msFilter===g.name) state.msFilter=null;
+        saveMeta(); renderDetail();
+      };
+    }
+    el.appendChild(row);
+  });
+}
+
+function renderTags(p, ts){
+  const counts = {};
+  ts.forEach(t=>(t.tagIds||[]).forEach(id=>counts[id]=(counts[id]||0)+1));
+  const el = $('tagRow'); el.innerHTML = Object.keys(counts).length? '' : '<span class="muted">No tags on this project’s tasks.</span>';
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([id,n])=>{
+    const tag = state.tagsMap[id]; if(!tag) return;
+    const c = document.createElement('span');
+    c.className = 'tagchip'+(state.tagFilter===id?' on':'');
+    c.style.borderColor = tag.color||''; c.textContent = `${tag.icon||''} ${tag.title} · ${n}`.trim();
+    c.title = 'Click to filter tasks';
+    c.onclick = ()=>{ state.tagFilter = state.tagFilter===id? null : id; renderTags(p, ts); renderTaskGroups(p); };
+    el.appendChild(c);
+  });
+  if(state.tagFilter||state.msFilter){
+    const clr = document.createElement('button'); clr.textContent = 'Clear filters'; clr.style.marginLeft = '8px';
+    clr.onclick = ()=>{ state.tagFilter=null; state.msFilter=null; renderDetail(); };
+    el.appendChild(clr);
+  }
+}
+
+function groupOf(t){
+  const today = todayStr();
+  if(!t.dueDay) return 'No date';
+  if(t.isDone) return t.dueDay<=today ? 'Done ✓' : 'Scheduled';
+  if(t.dueDay < today) return '⚠ Overdue';
+  if(t.dueDay === today) return '📅 Today';
+  return '🗓 Upcoming';
+}
+function renderTaskGroups(p){
+  const m = pm(p.id);
+  const ts = filteredTasks(p);
+  $('taskCount').textContent = `· ${ts.length}/${tasksForProject(p).length} shown`;
+  const order = ['⚠ Overdue','📅 Today','🗓 Upcoming','No date','Scheduled','Done ✓'];
+  const g = new Map();
+  ts.forEach(t=>{ const k = groupOf(t); if(!g.has(k)) g.set(k,[]); g.get(k).push(t); });
+  const el = $('taskGroups'); el.innerHTML = ts.length? '' : '<div class="muted" style="padding:8px">No tasks match the current filters.</div>';
+  order.filter(k=>g.has(k)).forEach(k=>{
+    const h = document.createElement('div'); h.className='group-h'; h.textContent = `${k} (${g.get(k).length})`; el.appendChild(h);
+    g.get(k).sort((a,b)=>(a.isDone-b.isDone)||((a.dueDay||'')<(b.dueDay||'')?-1:1)).forEach(t=>{
+      const row = document.createElement('div'); row.className = 'trow'+(t.isDone?' done':'');
+      const msOpts = `<option value="auto">auto</option>` + m.manualMs.map(x=>`<option value="${x.id}" ${(m.taskMs[t.id]||'auto')===x.id?'selected':''}>${esc(x.title)}</option>`).join('');
+      const sOpts = `<option value="">—</option>` + m.sprints.map(s=>`<option value="${s.id}" ${((s.taskIds||[]).includes(t.id))?'selected':''}>${esc(s.title)}</option>`).join('');
+      const tags = (t.tagIds||[]).map(id=>state.tagsMap[id]?esc(state.tagsMap[id].title):null).filter(Boolean).join(', ');
+      row.innerHTML = `
+        <input type="checkbox" ${t.isDone?'checked':''} title="Toggle done" />
+        <div class="tt">
+          <div class="t-title" title="Open in Super Productivity">${esc(t.title)}</div>
+          <div class="tmeta muted">${t.timeEstimate?`est ${h1(t.timeEstimate)} · `:''}${t.timeSpent?`spent ${h1(t.timeSpent)} · `:''}${t.dueDay?`📅 ${esc(t.dueDay)} · `:''}${tags?`🏷 ${tags} · `:''}${(t.subTaskIds||[]).length?`↳ ${t.subTaskIds.length} subtasks`:''}</div>
+          <div class="d-row" style="margin-top:4px">
+            <label class="muted">Milestone <select data-ms>${msOpts}</select></label>
+            <label class="muted">Sprint <select data-sp>${sOpts}</select></label>
+            <label class="muted">Est(h) <input class="est-in" data-est type="number" min="0" step="0.25" value="${t.timeEstimate?(+t.timeEstimate/MS_PER_H).toFixed(2).replace(/\.?0+$/,''):''}" /></label>
+          </div>
+        </div>`;
+      row.querySelector('input[type=checkbox]').onchange = (e)=>toggleTask(t.id, e.target.checked);
+      row.querySelector('.t-title').onclick = async ()=>{ try{ await PluginAPI.selectTask(t.id); }catch(e){ snack('Could not open task','ERROR'); } };
+      row.querySelector('[data-ms]').onchange = (e)=>{ const v=e.target.value; if(v==='auto') delete m.taskMs[t.id]; else m.taskMs[t.id]=v; saveMeta(); renderDetail(); };
+      row.querySelector('[data-sp]').onchange = (e)=>{
+        const v=e.target.value;
+        m.sprints.forEach(s=>{ s.taskIds=(s.taskIds||[]).filter(id=>id!==t.id); if(s.id===v) s.taskIds.push(t.id); });
+        saveMeta(); renderDetail();
+      };
+      row.querySelector('[data-est]').onchange = (e)=>{
+        const v = parseFloat(e.target.value);
+        setEstimate(t.id, isNaN(v)?0:v);
+      };
+      el.appendChild(row);
+    });
+  });
+}
+
+/* ---------- writes ---------- */
+async function toggleTask(id, done){
+  const prev = state.tasksMap[id];
+  if(prev) prev.isDone = done; // optimistic
+  renderDetail(); if(!$('viewGrid').hidden) renderGrid();
+  try { await PluginAPI.updateTask(id, { isDone: done }); }
+  catch(e){ if(prev) prev.isDone = !done; snack('Update failed — check plugin permissions','ERROR'); }
+  await refresh(true);
+}
+async function setEstimate(id, hours){
+  const ms = Math.max(0, hours)*MS_PER_H;
+  if(state.tasksMap[id]) state.tasksMap[id].timeEstimate = ms;
+  renderDetail();
+  try { await PluginAPI.updateTask(id, { timeEstimate: ms }); }
+  catch(e){ snack('Estimate update failed','ERROR'); }
+  await refresh(true);
+}
+async function addTask(p){
+  const title = $('newTaskTitle').value.trim(); if(!title) return;
+  try {
+    const id = await PluginAPI.addTask({ title, projectId: p.id });
+    $('newTaskTitle').value = '';
+    if(id && state.msFilter){ const m = pm(p.id); const man = m.manualMs.find(x=>x.title===state.msFilter); if(man){ m.taskMs[id]=man.id; saveMeta(); } }
+    snack('Task added','SUCCESS'); await refresh(true);
+  } catch(e){ snack('Add task failed','ERROR'); }
+}
+
+async function refresh(silent){
+  try { await fetchData(); if(state.sel) renderDetail(); else renderGrid(); }
+  catch(e){ console.error(e); if(!silent) snack('Progress: load failed','ERROR'); }
+}
+
+/* ---------- events ---------- */
 $('btnRefresh').onclick = ()=>refresh(false);
+$('btnRefresh2').onclick = ()=>refresh(false);
 $('calcMode').onchange = savePrefs; $('showBacklog').onchange = savePrefs; $('hideDone').onchange = savePrefs;
+$('btnBack').onclick = closeDetail;
+$('btnSaveGoal').onclick = ()=>{
+  const p = curProject(); if(!p) return;
+  const m = pm(p.id);
+  m.objective = $('fObjective').value.trim();
+  m.deadline = $('fDeadline').value || '';
+  m.timeBudgetH = $('fBudget').value || '';
+  saveMeta(); $('goalMsg').textContent = 'Saved ✓'; setTimeout(()=>$('goalMsg').textContent='', 2000);
+  renderGrid._cache = null; snack('Objective saved','SUCCESS');
+};
+$('btnAddMs').onclick = ()=>{
+  const p = curProject(); if(!p) return;
+  const v = $('mTitle').value.trim(); if(!v) return;
+  const m = pm(p.id);
+  if(m.manualMs.some(x=>x.title.toLowerCase()===v.toLowerCase())){ snack('Milestone exists','WARNING'); return; }
+  m.manualMs.push({ id: uid('m'), title: v }); $('mTitle').value='';
+  saveMeta(); renderDetail();
+};
+$('btnAddSprint').onclick = ()=>{
+  const p = curProject(); if(!p) return;
+  const t = $('sTitle').value.trim(); if(!t){ snack('Sprint needs a title','WARNING'); return; }
+  const m = pm(p.id);
+  m.sprints.push({ id: uid('s'), title: t, start: $('sStart').value||'', end: $('sEnd').value||'', taskIds: [] });
+  $('sTitle').value=''; saveMeta(); renderDetail();
+};
+$('fHideDone').onchange = (e)=>{ state.hideDoneTasks = e.target.checked; const p = curProject(); if(p) renderTaskGroups(p); };
+$('fSearch').oninput = (e)=>{ state.search = e.target.value; const p = curProject(); if(p) renderTaskGroups(p); };
+$('btnAddTask').onclick = ()=>{ const p = curProject(); if(p) addTask(p); };
+$('newTaskTitle').onkeydown = (e)=>{ if(e.key==='Enter'){ const p = curProject(); if(p) addTask(p); } };
 
 (async function init(){
-  await loadPrefs(); await refresh(true);
+  await loadPrefs(); await loadMeta(); await refresh(true);
   try {
     const H = PluginAPI.Hooks || {};
     ['taskComplete','taskUpdate','taskDelete','anyTaskUpdate','projectListUpdate'].forEach(h=>{
