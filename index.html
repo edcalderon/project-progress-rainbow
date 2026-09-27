@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <title>Project Progress Rainbow</title>
 <style>
-:root { --rb: linear-gradient(90deg,#ff5b7f,#ff8a5c,#ffd166,#06d6a0,#118ab2,#9b5de5); }
+:root { --rb: linear-gradient(90deg,#ff5b7f,#ff8a5c,#ffd166,#06d6a0,#118ab2,#9b5de5); --flow-t:2.2s; }
 * { box-sizing: border-box; }
 body { margin:0; padding: var(--s3,16px); font-family: var(--font-primary-stack, Roboto, sans-serif); background: var(--bg, #fff); color: var(--text-color, #222); }
 .top { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
@@ -14,15 +14,23 @@ body { margin:0; padding: var(--s3,16px); font-family: var(--font-primary-stack,
 .controls select, .controls label { font-size:13px; }
 .portfolio { background: var(--card-bg,#fff); border-radius: var(--card-border-radius,8px); box-shadow: var(--whiteframe-shadow-2dp,0 2px 6px rgba(0,0,0,.15)); padding:14px 16px; margin-bottom:16px; border:1px solid var(--divider-color, #e0e0e0); }
 .bar { height:14px; border-radius:999px; background: color-mix(in srgb, var(--text-color,#888) 12%, transparent); overflow:hidden; position:relative; }
-.bar > i { display:block; height:100%; width:0%; border-radius:999px; background: var(--rb); transition: width .45s var(--transition-standard, ease); position:relative; overflow:hidden; }
-/* continuous flow sheen sweeping along the fill */
-.bar > i::after { content:""; position:absolute; inset:0; border-radius:inherit;
-  background:linear-gradient(110deg, transparent 15%, rgba(255,255,255,.38) 50%, transparent 85%);
-  transform:translateX(-101%); animation:flow 2.4s linear infinite; }
-@keyframes flow { to { transform:translateX(101%); } }
+.bar > i { display:block; height:100%; width:0%; border-radius:999px; background:var(--rb); transition:width .45s var(--transition-standard, ease); position:relative; overflow:hidden;
+  box-shadow:0 0 10px rgba(155,93,229,.45), inset 0 1px 1px rgba(255,255,255,.35); }
+/* flowing diagonal stripes (transform-only, cheap) */
+.bar > i::before { content:""; position:absolute; top:0; bottom:0; left:0; width:200%;
+  background:repeating-linear-gradient(115deg, rgba(255,255,255,.30) 0 10px, transparent 10px 22px);
+  animation:stripes var(--flow-t) linear infinite; }
+@keyframes stripes { from { transform:translateX(-22px); } to { transform:translateX(0); } }
+/* bright sheen sweep with a pause at the end of each pass */
+.bar > i::after { content:""; position:absolute; top:0; bottom:0; left:0; width:45%; border-radius:inherit;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.6), transparent);
+  transform:translateX(-120%); animation:sheen calc(var(--flow-t) * 1.6) ease-in-out infinite; }
+@keyframes sheen { 0% { transform:translateX(-120%); } 55%,100% { transform:translateX(340%); } }
+body.no-anim .bar > i { box-shadow:none; }
+body.no-anim .bar > i::before, body.no-anim .bar > i::after { display:none; }
 @media (prefers-reduced-motion: reduce) {
-  .bar > i { transition:none; }
-  .bar > i::after { animation:none; display:none; }
+  .bar > i { transition:none; box-shadow:none; }
+  .bar > i::before, .bar > i::after { animation:none; display:none; }
 }
 .bar.slim { height:8px; }
 .bar-wrap { display:flex; align-items:center; gap:10px; }
@@ -172,9 +180,12 @@ button { cursor:pointer; }
 <script>
 const $ = (id) => document.getElementById(id);
 const MS_PER_H = 3600000;
+const PLUGIN_VERSION = '1.2.0'; // stamped by scripts/sync-manifest.mjs
+const FLOW_T = { slow: '3.8s', normal: '2.2s', fast: '1.1s' };
 const state = {
   projects: [], tasksMap: {}, tagsMap: {},
-  prefs: { calcMode: 'count', showBacklog: true, hideDone: false },
+  prefs: { calcMode: 'count', showBacklog: true, hideDone: false, animateBars: true, flowSpeed: 'normal', maxMilestones: 4 },
+  cfgKeys: {}, // prefs keys currently managed by proper plugin settings (override quick toggles)
   meta: {}, // projectId -> { objective, deadline, timeBudgetH, manualMs:[{id,title}], taskMs:{taskId:msId|'auto'}, sprints:[{id,title,start,end,taskIds:[]}] }
   sel: null, tagFilter: null, msFilter: null, hideDoneTasks: false, search: ''
 };
@@ -187,12 +198,42 @@ function snack(msg, type){ try{ PluginAPI.showSnack({msg, type:type||'INFO'});}c
 /* ---------- prefs + meta ---------- */
 async function loadPrefs(){
   try { const raw = await PluginAPI.loadSyncedData('prefs'); if(raw) Object.assign(state.prefs, JSON.parse(raw)); } catch(e){}
-  $('calcMode').value = state.prefs.calcMode; $('showBacklog').checked = !!state.prefs.showBacklog; $('hideDone').checked = !!state.prefs.hideDone;
+  applyDisplay();
 }
 async function savePrefs(){
-  state.prefs = { calcMode: $('calcMode').value, showBacklog: $('showBacklog').checked, hideDone: $('hideDone').checked };
+  state.prefs.calcMode = $('calcMode').value;
+  state.prefs.showBacklog = $('showBacklog').checked;
+  state.prefs.hideDone = $('hideDone').checked;
   try { await PluginAPI.persistDataSynced(JSON.stringify(state.prefs),'prefs'); } catch(e){}
   renderGrid();
+}
+/* Proper plugin settings (Settings → Plugins → ⚙, from config-schema.json)
+   override the quick header toggles whenever a key is set there. */
+async function loadConfig(){
+  try {
+    if(typeof PluginAPI.getConfig === 'function'){
+      const c = await PluginAPI.getConfig();
+      if(c && typeof c === 'object'){
+        ['calcMode','showBacklog','hideDone','animateBars','flowSpeed','maxMilestones'].forEach(k=>{
+          if(c[k]!==undefined && c[k]!==null && c[k]!==''){ state.prefs[k]=c[k]; state.cfgKeys[k]=true; }
+        });
+      }
+    }
+  } catch(e){}
+  applyDisplay();
+}
+function applyDisplay(){
+  document.body.classList.toggle('no-anim', !state.prefs.animateBars);
+  document.documentElement.style.setProperty('--flow-t', FLOW_T[state.prefs.flowSpeed] || FLOW_T.normal);
+  const lock = (id, key)=>{
+    const el = $(id); if(!el) return;
+    el.disabled = !!state.cfgKeys[key];
+    el.title = state.cfgKeys[key] ? 'Managed in plugin settings (Settings → Plugins → ⚙)' : '';
+  };
+  lock('calcMode','calcMode'); lock('showBacklog','showBacklog'); lock('hideDone','hideDone');
+  $('calcMode').value = state.prefs.calcMode;
+  $('showBacklog').checked = !!state.prefs.showBacklog;
+  $('hideDone').checked = !!state.prefs.hideDone;
 }
 async function loadMeta(){ try { const raw = await PluginAPI.loadSyncedData('projectMeta'); if(raw) state.meta = JSON.parse(raw)||{}; } catch(e){ state.meta = {}; } }
 let metaT = null;
@@ -269,14 +310,14 @@ function renderGrid(){
   $('portfolio').hidden = !projs.length;
   $('pfBar').style.width = pf.pct+'%'; $('pfPct').textContent = pf.pct+'%';
   $('pfCounts').textContent = `${pf.done}/${pf.total} tasks done across ${projs.length} projects`;
-  $('subtitle').textContent = `per-project bars + milestones · ${projs.length} projects — click a card for details`;
+  $('subtitle').textContent = `per-project bars + milestones · ${projs.length} projects — click a card for details · v${PLUGIN_VERSION}`;
   if(state.prefs.hideDone) projs = projs.filter(p=>p._pg.pct<100);
   $('empty').hidden = !!projs.length;
   projs.sort((a,b)=> a._pg.pct-b._pg.pct || a.title.localeCompare(b.title));
   projs.forEach(p=>{
     const color = (p.theme && p.theme.primary) || 'var(--c-primary)';
     const m = pm(p.id);
-    const ms = msGroups(p, p._ts).slice(0,4);
+    const ms = msGroups(p, p._ts).slice(0, Math.max(1, +state.prefs.maxMilestones || 4));
     const card = document.createElement('div');
     card.className = 'card clickable' + (p._pg.pct===100?' done':'');
     card.tabIndex = 0; card.setAttribute('role','button');
@@ -334,7 +375,7 @@ function renderDetail(){
   $('dCounts').textContent = `${pg.done}/${pg.total} done`;
   $('dBar').style.width = pg.pct+'%'; if(p.theme&&p.theme.primary) $('dBar').style.background = color; else $('dBar').style.background = '';
   $('dPct').textContent = pg.pct+'%';
-  $('dSub').textContent = `${ts.filter(t=>t.isDone).length}/${ts.length} tasks · ${state.prefs.calcMode} mode` + (m.deadline?` · 📅 ${m.deadline}`:'');
+  $('dSub').textContent = `${ts.filter(t=>t.isDone).length}/${ts.length} tasks · ${state.prefs.calcMode} mode` + (m.deadline?` · 📅 ${m.deadline}`:'') + ` · v${PLUGIN_VERSION}`;
   // goal form
   if(document.activeElement!==$('fObjective')) $('fObjective').value = m.objective||'';
   if(document.activeElement!==$('fDeadline')) $('fDeadline').value = m.deadline||'';
@@ -521,6 +562,7 @@ async function addTask(p){
 async function refresh(silent, force){
   try {
     await fetchData();
+    await loadConfig();
     // Don't yank the DOM while the user is typing in the detail view
     // (auto-refresh would steal focus). Explicit saves pass force=true.
     const ae = document.activeElement;
@@ -566,7 +608,7 @@ $('btnAddTask').onclick = ()=>{ const p = curProject(); if(p) addTask(p); };
 $('newTaskTitle').onkeydown = (e)=>{ if(e.key==='Enter'){ const p = curProject(); if(p) addTask(p); } };
 
 (async function init(){
-  await loadPrefs(); await loadMeta(); await refresh(true);
+  await loadPrefs(); await loadConfig(); await loadMeta(); await refresh(true);
   try {
     const H = PluginAPI.Hooks || {};
     ['taskComplete','taskUpdate','taskDelete','anyTaskUpdate','projectListUpdate'].forEach(h=>{

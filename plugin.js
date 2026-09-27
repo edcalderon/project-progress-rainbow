@@ -10,6 +10,14 @@
   } catch (e) {
     console.warn('[project-progress-rainbow] header btn failed', e);
   }
+  try {
+    // Settings button on the plugin card opens the plugin view.
+    // The actual options form is rendered by the app from config-schema.json
+    // and read back via PluginAPI.getConfig().
+    PluginAPI.registerConfigHandler(() => PluginAPI.showIndexHtmlAsView());
+  } catch (e) {
+    console.warn('[project-progress-rainbow] config handler failed', e);
+  }
   if (PluginAPI.onReady) {
     PluginAPI.onReady(async () => {
       try {

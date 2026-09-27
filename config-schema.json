@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Progress Rainbow Settings",
+  "description": "Display, progress and animation options. Anything set here overrides the quick toggles in the plugin header.",
+  "type": "object",
+  "properties": {
+    "calcMode": {
+      "type": "string",
+      "title": "Progress calculation",
+      "description": "Count completed tasks, or weigh by time estimates.",
+      "enum": ["count", "time"],
+      "default": "count"
+    },
+    "showBacklog": {
+      "type": "boolean",
+      "title": "Include backlog tasks",
+      "description": "Count tasks sitting in project backlogs.",
+      "default": true
+    },
+    "hideDone": {
+      "type": "boolean",
+      "title": "Hide completed (100%) projects",
+      "description": "Hide cards that reached 100% from the grid.",
+      "default": false
+    },
+    "animateBars": {
+      "type": "boolean",
+      "title": "Animated flow effect",
+      "description": "Moving stripes + light sweep on every progress bar.",
+      "default": true
+    },
+    "flowSpeed": {
+      "type": "string",
+      "title": "Flow speed",
+      "description": "How fast the bar animation flows.",
+      "enum": ["slow", "normal", "fast"],
+      "default": "normal"
+    },
+    "maxMilestones": {
+      "type": "integer",
+      "title": "Milestones shown per card",
+      "description": "How many milestone rows each project card previews.",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 4
+    }
+  }
+}

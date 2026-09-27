@@ -17,7 +17,7 @@ For full version history, see [CHANGELOG.md](./CHANGELOG.md) and [GitHub release
 ## ✨ What it does
 
 - **Portfolio bar** on top: `done / total` across all non-archived projects.
-- **Card per project**: big `%`, `done/total` counts, rainbow progress bar with a continuous flow sheen (pure CSS, auto-disabled under `prefers-reduced-motion`). Uses the project's own color when set (`project.theme.primary`), otherwise rainbow.
+- **Card per project**: big `%`, `done/total` counts, rainbow progress bar with a bold animated flow (moving stripes + sweeping sheen + glow, speed adjustable, auto-disabled under `prefers-reduced-motion`). Uses the project's own color when set (`project.theme.primary`), otherwise rainbow.
 - **Milestones, zero config** — tasks are auto-grouped:
   1. Title prefix `[M: Checkout]` → milestone "Checkout"
   2. Else parent epic title (`⛰ Epic`)
@@ -44,7 +44,14 @@ manifest.json
 plugin.js
 index.html
 icon.svg
+config-schema.json
 ```
+
+## ⚙️ Settings
+
+Proper plugin settings live on the plugin card: **Settings → Plugins → ⚙ icon**. They are rendered by the app from `config-schema.json` (calculation mode, backlog, hide-done, bar animation on/off, flow speed, milestones per card) and read back via `PluginAPI.getConfig()`.
+
+The quick toggles in the plugin header write to local synced prefs instead — anything set in the ⚙ form overrides them (locked controls show a tooltip saying so).
 
 ## 🧪 Try it
 1. Create 2 projects with mixed done/undone tasks.
@@ -68,7 +75,7 @@ npm run release:minor   # or release:patch / release:major
 git add -A && git commit -m "feat: ..."   # pre-commit hook scans for secrets
 npx -y @edcalderon/versioning@1.5.13 guard-tag -t v1.1.0
 git tag -a v1.1.0 -m "v1.1.0" && git push origin main v1.1.0
-zip -j project-progress-rainbow.zip manifest.json plugin.js index.html icon.svg
+zip -j project-progress-rainbow.zip manifest.json plugin.js index.html icon.svg config-schema.json
 gh release create v1.1.0 project-progress-rainbow.zip --title "v1.1.0" --notes "..."
 ```
 

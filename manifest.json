@@ -8,6 +8,7 @@
   "author": "edcalderon",
   "homepage": "https://github.com/edcalderon/project-progress-rainbow",
   "icon": "icon.svg",
+  "jsonSchemaCfg": "config-schema.json",
   "iFrame": true,
   "sidePanel": false,
   "permissions": [],
