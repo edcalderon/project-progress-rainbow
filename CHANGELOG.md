@@ -1,3 +1,14 @@
+# [1.2.0](https://github.com/edcalderon/project-progress-rainbow/compare/v1.1.1...v1.2.0) (2026-09-27)
+
+
+### Features
+
+* continuous flow animation on progress bars ([5857e38](https://github.com/edcalderon/project-progress-rainbow/commit/5857e38ef8b284da3aa8b5eaabe696057185c727))
+
+
+
+
+
 ## [1.1.1](https://github.com/edcalderon/project-progress-rainbow/compare/v1.1.0...v1.1.1) (2026-09-27)
 
 
