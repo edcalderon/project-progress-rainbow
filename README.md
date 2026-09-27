@@ -17,7 +17,7 @@ For full version history, see [CHANGELOG.md](./CHANGELOG.md) and [GitHub release
 ## ✨ What it does
 
 - **Portfolio bar** on top: `done / total` across all non-archived projects.
-- **Card per project**: big `%`, `done/total` counts, animated rainbow progress bar. Uses the project's own color when set (`project.theme.primary`), otherwise rainbow.
+- **Card per project**: big `%`, `done/total` counts, rainbow progress bar with a continuous flow sheen (pure CSS, auto-disabled under `prefers-reduced-motion`). Uses the project's own color when set (`project.theme.primary`), otherwise rainbow.
 - **Milestones, zero config** — tasks are auto-grouped:
   1. Title prefix `[M: Checkout]` → milestone "Checkout"
   2. Else parent epic title (`⛰ Epic`)
