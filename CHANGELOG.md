@@ -1,3 +1,18 @@
+# [1.4.1](https://github.com/edcalderon/project-progress-rainbow/compare/v1.3.0...v1.4.1) (2026-09-28)
+
+
+### Features
+
+* speedometer fuel-gauge portfolio dial, project search/sort/status filters, Grid/List/Rows layouts, tabbed detail view, layout/sortBy settings ([e68743](https://github.com/edcalderon/project-progress-rainbow/commit/e687437578d9eb807d577376012b2e43bc83f987))
+
+
+### Bug Fixes
+
+* gauge rainbow compressed to progress with glowing tip, % pill moved below dial to stop overlap, single unified filter panel, one section per detail tab ([e68743](https://github.com/edcalderon/project-progress-rainbow/commit/e687437578d9eb807d577376012b2e43bc83f987))
+
+
+
+
 # [1.3.0](https://github.com/edcalderon/project-progress-rainbow/compare/v1.2.0...v1.3.0) (2026-09-27)
 
 

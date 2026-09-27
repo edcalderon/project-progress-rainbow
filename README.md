@@ -2,15 +2,20 @@
 
 A [Super Productivity](https://github.com/super-productivity/super-productivity) plugin: per-project progress view with an overall portfolio bar + automatic milestones, styled to blend with the Rainbow theme (and light/dark themes).
 
-![version](https://img.shields.io/badge/version-1.3.0-9b5de5)
+![version](https://img.shields.io/badge/version-1.4.1-9b5de5)
 ![sup](https://img.shields.io/badge/super--productivity-%3E%3D14.0.0-118ab2)
 ![license](https://img.shields.io/badge/license-MIT-06d6a0)
 
-## 📋 Latest Changes (v1.3.0)
+## 📋 Latest Changes (v1.4.1)
 
 ### Features
 
-* proper plugin settings, version display, bolder bar animation ([fdefa4b](https://github.com/edcalderon/project-progress-rainbow/commit/fdefa4b84ef404133dd1ee143bb17cb2039c552a))
+* speedometer fuel-gauge portfolio dial, project search/sort/status filters, Grid/List/Rows layouts, tabbed detail view, layout/sortBy settings ([e68743](https://github.com/edcalderon/project-progress-rainbow/commit/e687437578d9eb807d577376012b2e43bc83f987))
+
+
+### Bug Fixes
+
+* gauge rainbow compressed to progress with glowing tip, % pill moved below dial to stop overlap, single unified filter panel, one section per detail tab ([e68743](https://github.com/edcalderon/project-progress-rainbow/commit/e687437578d9eb807d577376012b2e43bc83f987))
 
 For full version history, see [CHANGELOG.md](./CHANGELOG.md) and [GitHub releases](https://github.com/edcalderon/project-progress-rainbow/releases)
 
