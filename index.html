@@ -36,6 +36,9 @@ body { margin:0; padding: var(--s3,16px); font-family: var(--font-primary-stack,
 .mrow .m-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mrow .m-pct { font-variant-numeric:tabular-nums; color: var(--text-color-muted,#777); }
 .mrow.done .m-name::after { content:" ✓"; color:#06d6a0; }
+.mrow.active { border-left:3px solid var(--c-primary,#888); padding-left:6px; }
+.mrow.active .m-name { font-weight:700; }
+.m-edit input[type=text] { max-width:180px; }
 .empty { padding:24px; text-align:center; }
 /* detail */
 .d-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
@@ -348,7 +351,15 @@ function renderSprints(p, ts){
       <div class="s-top"><span class="s-name">${esc(s.title)}</span><span class="muted">${esc(s.start||'')} → ${esc(s.end||'')} · ${pg.done}/${pg.total} · ${pg.pct}%</span></div>
       <div class="bar-wrap" style="margin-top:6px"><div class="bar slim" style="flex:1"><i style="width:${pg.pct}%"></i></div></div>
       <div class="d-row"><button data-del="${s.id}">Delete</button><span class="muted">${sts.length} tasks assigned</span></div>`;
-    d.querySelector('[data-del]').onclick = ()=>{ m.sprints = m.sprints.filter(x=>x.id!==s.id); saveMeta(); renderDetail(); };
+    const del = d.querySelector('[data-del]');
+    del.onclick = ()=>{
+      if(del.dataset.arm){
+        m.sprints = m.sprints.filter(x=>x.id!==s.id); saveMeta(); renderDetail(); snack('Sprint deleted','SUCCESS');
+      } else {
+        del.dataset.arm = '1'; del.textContent = 'Click again to confirm';
+        setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent = 'Delete'; } }, 2500);
+      }
+    };
     el.appendChild(d);
   });
 }
@@ -357,25 +368,43 @@ function renderMs(p, ts){
   const m = pm(p.id);
   const groups = msGroups(p, ts);
   const el = $('msList'); el.innerHTML='';
+  if(!groups.length) el.innerHTML = '<div class="muted">No milestones yet — add one below or title tasks [M: Name].</div>';
   groups.forEach(g=>{
-    const row = document.createElement('div'); row.className = 'mrow'+(g.pct===100?' done':'');
+    const active = state.msFilter === g.name;
+    const row = document.createElement('div'); row.className = 'mrow'+(g.pct===100?' done':'')+(active?' active':'');
     row.innerHTML = `
       <div class="m-top"><span class="m-name" title="${esc(g.name)}">${esc(g.name)}${g.manualId?' ✎':''}</span>
       <span><span class="m-pct">${g.done}/${g.total} · ${g.pct}%</span>
-      ${g.manualId?` <button data-f="1">filter</button> <button data-r="1">rename</button> <button data-d="1">✕</button>`:` <button data-f="1">filter</button>`}</span></div>
-      <div class="bar slim"><i style="width:${g.pct}%"></i></div>`;
-    row.querySelector('[data-f]').onclick = ()=>{ state.msFilter = state.msFilter===g.name? null : g.name; renderTags(p, ts); renderTaskGroups(p); };
+      <button data-f="1">${active?'✓ filtered':'filter'}</button>${g.manualId?` <button data-r="1">rename</button> <button data-d="1">✕</button>`:''}</span></div>
+      <div class="bar slim"><i style="width:${g.pct}%"></i></div>
+      <div class="d-row m-edit" data-edit hidden><input type="text" data-rin value="${esc(g.name)}" maxlength="60" /><button data-ok>Save</button><button data-cancel>Cancel</button></div>`;
+    row.querySelector('[data-f]').onclick = ()=>{ state.msFilter = active ? null : g.name; renderTags(p, ts); renderMs(p, ts); renderTaskGroups(p); };
     if(g.manualId){
-      row.querySelector('[data-r]').onclick = ()=>{
-        const v = prompt('Rename milestone', g.name); if(!v||!v.trim()) return;
-        m.manualMs.find(x=>x.id===g.manualId).title = v.trim(); saveMeta(); renderDetail();
+      const editBox = row.querySelector('[data-edit]');
+      const rin = row.querySelector('[data-rin]');
+      row.querySelector('[data-r]').onclick = ()=>{ editBox.hidden = false; rin.focus(); rin.select(); };
+      row.querySelector('[data-cancel]').onclick = ()=>{ editBox.hidden = true; };
+      const doRename = ()=>{
+        const v = rin.value.trim();
+        if(!v){ snack('Name cannot be empty','WARNING'); return; }
+        if(m.manualMs.some(x=>x.id!==g.manualId && x.title.toLowerCase()===v.toLowerCase())){ snack('Milestone exists','WARNING'); return; }
+        if(state.msFilter===g.name) state.msFilter = v;
+        m.manualMs.find(x=>x.id===g.manualId).title = v;
+        saveMeta(); renderDetail(); snack('Milestone renamed','SUCCESS');
       };
-      row.querySelector('[data-d]').onclick = ()=>{
-        if(!confirm(`Delete milestone "${g.name}"? Tasks fall back to auto grouping.`)) return;
-        m.manualMs = m.manualMs.filter(x=>x.id!==g.manualId);
-        Object.keys(m.taskMs).forEach(k=>{ if(m.taskMs[k]===g.manualId) m.taskMs[k]='auto'; });
-        if(state.msFilter===g.name) state.msFilter=null;
-        saveMeta(); renderDetail();
+      row.querySelector('[data-ok]').onclick = doRename;
+      rin.onkeydown = (e)=>{ if(e.key==='Enter') doRename(); if(e.key==='Escape') editBox.hidden = true; };
+      const del = row.querySelector('[data-d]');
+      del.onclick = ()=>{
+        if(del.dataset.arm){
+          m.manualMs = m.manualMs.filter(x=>x.id!==g.manualId);
+          Object.keys(m.taskMs).forEach(k=>{ if(m.taskMs[k]===g.manualId) delete m.taskMs[k]; });
+          if(state.msFilter===g.name) state.msFilter = null;
+          saveMeta(); renderDetail(); snack('Milestone deleted','SUCCESS');
+        } else {
+          del.dataset.arm = '1'; del.textContent = 'sure?';
+          setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent = '✕'; } }, 2500);
+        }
       };
     }
     el.appendChild(row);
@@ -460,7 +489,7 @@ async function toggleTask(id, done){
   renderDetail(); if(!$('viewGrid').hidden) renderGrid();
   try { await PluginAPI.updateTask(id, { isDone: done }); }
   catch(e){ if(prev) prev.isDone = !done; snack('Update failed — check plugin permissions','ERROR'); }
-  await refresh(true);
+  await refresh(true, true);
 }
 async function setEstimate(id, hours){
   const ms = Math.max(0, hours)*MS_PER_H;
@@ -468,7 +497,7 @@ async function setEstimate(id, hours){
   renderDetail();
   try { await PluginAPI.updateTask(id, { timeEstimate: ms }); }
   catch(e){ snack('Estimate update failed','ERROR'); }
-  await refresh(true);
+  await refresh(true, true);
 }
 async function addTask(p){
   const title = $('newTaskTitle').value.trim(); if(!title) return;
@@ -476,12 +505,20 @@ async function addTask(p){
     const id = await PluginAPI.addTask({ title, projectId: p.id });
     $('newTaskTitle').value = '';
     if(id && state.msFilter){ const m = pm(p.id); const man = m.manualMs.find(x=>x.title===state.msFilter); if(man){ m.taskMs[id]=man.id; saveMeta(); } }
-    snack('Task added','SUCCESS'); await refresh(true);
+    snack('Task added','SUCCESS'); await refresh(true, true);
   } catch(e){ snack('Add task failed','ERROR'); }
 }
 
-async function refresh(silent){
-  try { await fetchData(); if(state.sel) renderDetail(); else renderGrid(); }
+async function refresh(silent, force){
+  try {
+    await fetchData();
+    // Don't yank the DOM while the user is typing in the detail view
+    // (auto-refresh would steal focus). Explicit saves pass force=true.
+    const ae = document.activeElement;
+    const typing = ae && !$('viewDetail').hidden && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && $('viewDetail').contains(ae);
+    if(typing && state.sel && !force) return;
+    if(state.sel) renderDetail(); else renderGrid();
+  }
   catch(e){ console.error(e); if(!silent) snack('Progress: load failed','ERROR'); }
 }
 
@@ -497,7 +534,7 @@ $('btnSaveGoal').onclick = ()=>{
   m.deadline = $('fDeadline').value || '';
   m.timeBudgetH = $('fBudget').value || '';
   saveMeta(); $('goalMsg').textContent = 'Saved ✓'; setTimeout(()=>$('goalMsg').textContent='', 2000);
-  renderGrid._cache = null; snack('Objective saved','SUCCESS');
+  snack('Objective saved','SUCCESS');
 };
 $('btnAddMs').onclick = ()=>{
   const p = curProject(); if(!p) return;
@@ -512,7 +549,7 @@ $('btnAddSprint').onclick = ()=>{
   const t = $('sTitle').value.trim(); if(!t){ snack('Sprint needs a title','WARNING'); return; }
   const m = pm(p.id);
   m.sprints.push({ id: uid('s'), title: t, start: $('sStart').value||'', end: $('sEnd').value||'', taskIds: [] });
-  $('sTitle').value=''; saveMeta(); renderDetail();
+  $('sTitle').value=''; $('sStart').value=''; $('sEnd').value=''; saveMeta(); renderDetail();
 };
 $('fHideDone').onchange = (e)=>{ state.hideDoneTasks = e.target.checked; const p = curProject(); if(p) renderTaskGroups(p); };
 $('fSearch').oninput = (e)=>{ state.search = e.target.value; const p = curProject(); if(p) renderTaskGroups(p); };
