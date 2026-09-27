@@ -1,3 +1,14 @@
+# [1.3.0](https://github.com/edcalderon/project-progress-rainbow/compare/v1.2.0...v1.3.0) (2026-09-27)
+
+
+### Features
+
+* proper plugin settings, version display, bolder bar animation ([fdefa4b](https://github.com/edcalderon/project-progress-rainbow/commit/fdefa4b84ef404133dd1ee143bb17cb2039c552a))
+
+
+
+
+
 # [1.2.0](https://github.com/edcalderon/project-progress-rainbow/compare/v1.1.1...v1.2.0) (2026-09-27)
 
 
