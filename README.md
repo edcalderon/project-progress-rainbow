@@ -2,21 +2,15 @@
 
 A [Super Productivity](https://github.com/super-productivity/super-productivity) plugin: per-project progress view with an overall portfolio bar + automatic milestones, styled to blend with the Rainbow theme (and light/dark themes).
 
-![version](https://img.shields.io/badge/version-1.1.0-9b5de5)
+![version](https://img.shields.io/badge/version-1.1.1-9b5de5)
 ![sup](https://img.shields.io/badge/super--productivity-%3E%3D14.0.0-118ab2)
 ![license](https://img.shields.io/badge/license-MIT-06d6a0)
 
-## 📋 Latest Changes (v1.1.0)
+## 📋 Latest Changes (v1.1.1)
 
-### Features
+### Bug Fixes
 
-* initial public release of Project Progress Rainbow plugin ([ea1941a](https://github.com/edcalderon/project-progress-rainbow/commit/ea1941a4206e488253804c6832ba3e952a29a589))
-
-
-
-
-
-# Changelog
+* detail page editing works inside sandboxed iframe ([6a6e197](https://github.com/edcalderon/project-progress-rainbow/commit/6a6e1973feccc1b083cca079f513701f80d96d39))
 
 For full version history, see [CHANGELOG.md](./CHANGELOG.md) and [GitHub releases](https://github.com/edcalderon/project-progress-rainbow/releases)
 
