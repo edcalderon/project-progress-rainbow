@@ -1,6 +1,6 @@
 {
   "name": "project-progress-rainbow",
-  "version": "1.3.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Super Productivity plugin: per-project progress bars with auto milestones, rainbow gradient, theme-aware.",
   "repository": {
