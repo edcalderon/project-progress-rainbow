@@ -85,7 +85,29 @@ body.no-anim .bar > i::before, body.no-anim .bar > i::after { display:none; }
 .card.clickable { cursor:pointer; }
 .card.clickable:hover { border-color: var(--c-primary,#888); box-shadow: var(--whiteframe-shadow-2dp,0 2px 6px rgba(0,0,0,.2)); }
 .card.done { outline:2px solid #06d6a0; }
+.card.selected { border-color: var(--c-primary,#9b5de5); outline:2px solid var(--c-primary,#9b5de5); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-primary,#9b5de5) 25%, transparent), var(--whiteframe-shadow-2dp,0 2px 6px rgba(0,0,0,.2)); }
 .proj-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.open-btn { flex:none; border:1px solid var(--divider-color,#ccc); background:transparent; color:inherit; border-radius:8px; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-size:13px; line-height:1; opacity:.7; }
+.open-btn:hover { opacity:1; border-color:var(--c-primary,#888); box-shadow:0 0 8px rgba(155,93,229,.4); }
+.card.selected .open-btn { opacity:1; }
+/* per-project task tracker — lives in the hero free space, cards keep milestones */
+.tracker { display:flex; flex-direction:column; gap:8px; min-height:0; }
+.tracker-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tracker-top h2 { font-size:14px; margin:0; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tracker-cols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+@media (max-width:900px){ .tracker-cols { grid-template-columns:1fr; } }
+.tracker-col { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.tracker-kicker { font-size:10px; text-transform:uppercase; letter-spacing:.07em; opacity:.65; font-weight:700; }
+.tracker-row { display:flex; align-items:center; gap:7px; font-size:12px; border:1px solid var(--divider-color,#e0e0e0); border-radius:9px; padding:6px 9px; min-width:0; background:color-mix(in srgb, var(--card-bg,#fff) 88%, transparent); }
+.tracker-row.now { border-color:var(--c-primary,#9b5de5); box-shadow:0 0 0 1px var(--c-primary,#9b5de5); }
+.tracker-row .tk-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.tracker-row.now .tk-title { font-weight:700; }
+.tracker-row.is-done .tk-title { text-decoration:line-through; opacity:.6; }
+.tracker-row .tk-check { flex:none; accent-color:#9b5de5; }
+.tracker-tag { flex:none; font-size:10px; padding:1px 7px; border-radius:999px; border:1px solid var(--divider-color,#ccc); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tracker-due { flex:none; font-size:11px; opacity:.75; font-variant-numeric:tabular-nums; }
+.tracker-due.over { color:#ff5b7f; font-weight:700; }
+.tracker-empty { font-size:12px; padding:2px; }
 .dot { width:12px; height:12px; border-radius:50%; flex:none; background: var(--c-primary,#888); }
 .proj-head h2 { font-size:15px; margin:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .counts { font-size:12px; }
@@ -219,6 +241,8 @@ button { cursor:pointer; }
           <span class="muted" id="resCount" style="margin-left:auto"></span>
         </div>
       </div>
+      <!-- Task tracker for the selected project — fills the hero free space -->
+      <div class="panel tracker" id="trackerPanel" aria-live="polite"></div>
     </div>
   </div>
 
@@ -309,14 +333,14 @@ button { cursor:pointer; }
 <script>
 const $ = (id) => document.getElementById(id);
 const MS_PER_H = 3600000;
-const PLUGIN_VERSION = '1.4.1'; // stamped by scripts/sync-manifest.mjs
+const PLUGIN_VERSION = '1.5.2'; // stamped by scripts/sync-manifest.mjs
 const FLOW_T = { slow: '3.8s', normal: '2.2s', fast: '1.1s' };
 const state = {
   projects: [], tasksMap: {}, tagsMap: {},
   prefs: { calcMode: 'count', showBacklog: true, hideDone: false, animateBars: true, flowSpeed: 'normal', maxMilestones: 4, layout: 'grid', sortBy: 'progress-asc' },
   cfgKeys: {},
   meta: {},
-  sel: null, tagFilter: null, msFilter: null, hideDoneTasks: false, search: '',
+  sel: null, detailId: null, tagFilter: null, msFilter: null, hideDoneTasks: false, search: '',
   projSearch: '', statusTab: 'all', dtab: 'overview'
 };
 const uid = (p) => p + '_' + Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36);
@@ -442,6 +466,56 @@ function deadlineChip(m){
   return `<span class="deadline-chip ${over?'over':''}">📅 ${esc(m.deadline)}${over?' · overdue':''}</span>`;
 }
 
+/* ---------- tracker: Now / Next / Done ordered by tag priority + due date ---------- */
+function tagPrioScore(t){
+  const ids = t.tagIds || [];
+  if(!ids.length) return 3;
+  let best = 3;
+  ids.forEach(id=>{
+    const tag = state.tagsMap[id];
+    const s = ((tag && (tag.title || '')) + '').toLowerCase();
+    let v = 3;
+    if(/p1|urgent|critical|!!!|high|important|priority/.test(s)) v = 0;
+    else if(/p2|medium|!!|soon/.test(s)) v = 1;
+    else if(/p3|low|!|later|someday/.test(s)) v = 2;
+    else v = 2; // any other tag still outranks untagged
+    if(v < best) best = v;
+  });
+  return best;
+}
+function dueRank(t){
+  if(!t.dueDay) return 3;
+  const today = todayStr();
+  if(t.dueDay < today) return 0;
+  if(t.dueDay === today) return 1;
+  return 2;
+}
+function plannerSort(ts){
+  return [...ts].sort((a,b)=>{
+    if(!!a.isDone !== !!b.isDone) return a.isDone ? 1 : -1;
+    const pa = tagPrioScore(a), pb = tagPrioScore(b);
+    if(pa !== pb) return pa - pb;
+    const da = dueRank(a), db = dueRank(b);
+    if(da !== db) return da - db;
+    const ea = a.dueDay || '9999', eb = b.dueDay || '9999';
+    if(ea !== eb) return ea < eb ? -1 : 1;
+    return (a.title||'').localeCompare(b.title||'');
+  });
+}
+function trackerTag(t){
+  const id = (t.tagIds||[])[0];
+  const tag = id && state.tagsMap[id];
+  if(!tag) return '';
+  const extra = (t.tagIds||[]).length > 1 ? ` +${(t.tagIds||[]).length-1}` : '';
+  return `<span class="tracker-tag" ${tag.color?`style="border-color:${esc(tag.color)}"`:''} title="${esc(tag.title||'')}">${esc(((tag.icon||'')?tag.icon+' ':'')+(tag.title||'')+extra)}</span>`;
+}
+function trackerDue(t){
+  if(!t.dueDay) return '';
+  const today = todayStr();
+  const over = !t.isDone && t.dueDay < today;
+  return `<span class="tracker-due ${over?'over':''}">${over?'⚠ ':''}${esc(t.dueDay.slice(5))}</span>`;
+}
+
 /* ---------- gauge: rainbow flow, no text overlap ---------- */
 function arcPt(pct, r){
   const a = (180 - Math.max(0,Math.min(100,pct))*1.8) * Math.PI/180;
@@ -480,26 +554,37 @@ function updateGauge(pct){
   $('gaugePct').textContent = pct + '%';
 }
 
-/* ---------- grid ---------- */
+/* ---------- grid (cards untouched — milestones stay; click selects) ---------- */
 function statusOf(pg){ if(pg.total===0) return 'empty'; if(pg.pct===100) return 'done'; return 'active'; }
+function selectProject(pid){
+  state.sel = pid;
+  document.querySelectorAll('#grid .card').forEach(c=>c.classList.toggle('selected', c.dataset.pid===pid));
+  renderTracker();
+}
 function renderGrid(){
   const grid = $('grid'); grid.innerHTML='';
-  let projs = state.projects.filter(p=>!p.isArchived);
+  const all = state.projects.filter(p=>!p.isArchived);
   let allTasks = [];
-  projs.forEach(p=>{ const ts = tasksForProject(p); p._ts = ts; p._pg = progressOf(ts); allTasks.push(...ts); });
+  all.forEach(p=>{ const ts = tasksForProject(p); p._ts = ts; p._pg = progressOf(ts); allTasks.push(...ts); });
+  // default tracker selection: first in-progress project
+  if(!all.some(p=>p.id===state.sel)){
+    const first = all.find(p=>statusOf(p._pg)==='active') || all.find(p=>statusOf(p._pg)!=='empty') || all[0];
+    state.sel = first ? first.id : null;
+  }
   const pf = progressOf(allTasks);
   // gauge hero
   updateGauge(pf.pct);
-  $('pfCounts').textContent = `${pf.done}/${pf.total} tasks done across ${projs.length} projects · ${state.prefs.calcMode} mode`;
-  $('stDone').textContent = pf.done; $('stTotal').textContent = pf.total; $('stProj').textContent = projs.length;
-  $('subtitle').textContent = `${projs.length} projects · click a card for details · v${PLUGIN_VERSION}`;
+  $('pfCounts').textContent = `${pf.done}/${pf.total} tasks done across ${all.length} projects · ${state.prefs.calcMode} mode`;
+  $('stDone').textContent = pf.done; $('stTotal').textContent = pf.total; $('stProj').textContent = all.length;
+  $('subtitle').textContent = `${all.length} projects · click a card to track it below · ⧉ opens details · v${PLUGIN_VERSION}`;
   // status tab counts (before hideDone/search so tabs stay stable)
-  const cnt = { all: projs.length, active: 0, done: 0, empty: 0 };
-  projs.forEach(p=>{ cnt[statusOf(p._pg)]++; });
+  const cnt = { all: all.length, active: 0, done: 0, empty: 0 };
+  all.forEach(p=>{ cnt[statusOf(p._pg)]++; });
   $('cAll').textContent = `(${cnt.all})`; $('cActive').textContent = `(${cnt.active})`;
   $('cDone').textContent = `(${cnt.done})`; $('cEmpty').textContent = `(${cnt.empty})`;
   document.querySelectorAll('#statusTabs .ptab').forEach(b=>b.classList.toggle('on', b.dataset.tab===state.statusTab));
   // filters
+  let projs = [...all];
   if(state.prefs.hideDone) projs = projs.filter(p=>p._pg.pct<100);
   if(state.statusTab==='active') projs = projs.filter(p=>statusOf(p._pg)==='active');
   else if(state.statusTab==='done') projs = projs.filter(p=>statusOf(p._pg)==='done');
@@ -524,10 +609,13 @@ function renderGrid(){
     const m = pm(p.id);
     const ms = msGroups(p, p._ts).slice(0, Math.max(1, +state.prefs.maxMilestones || 4));
     const card = document.createElement('div');
-    card.className = 'card clickable' + (p._pg.pct===100?' done':'');
+    card.className = 'card clickable' + (p._pg.pct===100?' done':'') + (p.id===state.sel?' selected':'');
+    card.dataset.pid = p.id;
     card.tabIndex = 0; card.setAttribute('role','button');
+    card.title = 'Click to track this project below — ⧉ for details';
     card.innerHTML = `
-      <div class="proj-head"><span class="dot" style="background:${esc(color)}"></span><h2 title="${esc(p.title)}">${esc(p.title)}</h2><span class="counts muted">${p._pg.done}/${p._pg.total}</span></div>
+      <div class="proj-head"><span class="dot" style="background:${esc(color)}"></span><h2 title="${esc(p.title)}">${esc(p.title)}</h2><span class="counts muted">${p._pg.done}/${p._pg.total}</span>
+      <button class="open-btn" title="Open project details" aria-label="Open ${esc(p.title)} details">⧉</button></div>
       <div class="bar-wrap"><div class="bar" style="flex:1"><i style="width:${p._pg.pct}%${p.theme&&p.theme.primary?`;background:${esc(color)}`:''}"></i></div><div class="pct">${p._pg.pct}%</div></div>
       ${m.objective?`<div class="obj-snippet muted">🎯 ${esc(m.objective)}</div>`:''}
       ${deadlineChip(m)}
@@ -537,22 +625,80 @@ function renderGrid(){
           <div class="bar slim"><i style="width:${x.pct}%"></i></div>
         </div>`).join('') || '<div class="muted">No tasks yet.</div>'}
       </div>`;
-    card.onclick = ()=>openProject(p.id);
-    card.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openProject(p.id); } };
+    card.onclick = ()=>selectProject(p.id);
+    card.ondblclick = ()=>openProject(p.id);
+    card.onkeydown = (e)=>{
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); selectProject(p.id); }
+      if(e.key==='o'||e.key==='O'){ e.preventDefault(); openProject(p.id); }
+    };
+    card.querySelector('.open-btn').onclick = (e)=>{ e.stopPropagation(); openProject(p.id); };
     grid.appendChild(card);
+  });
+  renderTracker();
+}
+
+/* ---------- per-project tracker in the hero free space ---------- */
+function trackerRow(t, kind){
+  return `<div class="tracker-row ${kind}${t.isDone?' is-done':''}">
+    <input type="checkbox" class="tk-check" data-tk-toggle="${t.id}" ${t.isDone?'checked':''} title="Toggle done" />
+    <span class="tk-title" data-tk-open="${t.id}" title="${esc(t.title||'')} — open in Super Productivity">${kind==='now'?'▶ ':kind==='next'?'○ ':'✓ '}${esc(t.title||'(untitled)')}</span>
+    ${trackerTag(t)}${trackerDue(t)}${t.timeEstimate?`<span class="tracker-due">⏱${(+t.timeEstimate/3600000).toFixed(1).replace(/\.0$/,'')}h</span>`:''}
+  </div>`;
+}
+function renderTracker(){
+  const el = $('trackerPanel');
+  if(!el) return;
+  const all = state.projects.filter(p=>!p.isArchived);
+  all.forEach(p=>{ if(!p._ts){ p._ts = tasksForProject(p); p._pg = progressOf(p._ts); } });
+  const p = all.find(x=>x.id===state.sel) || null;
+  if(!p){
+    el.innerHTML = `<h3>📌 Task tracker</h3><div class="tracker-empty muted">No projects yet — create one in Super Productivity to track it here.</div>`;
+    return;
+  }
+  const color = (p.theme && p.theme.primary) || 'var(--c-primary)';
+  const open = plannerSort(p._ts.filter(t=>!t.isDone));
+  const done = plannerSort(p._ts.filter(t=>t.isDone)).slice(0, 3);
+  const now = open[0] || null;
+  const next = open.slice(1, 4);
+  const col = (kicker, rows, emptyMsg)=>{
+    return `<div class="tracker-col"><div class="tracker-kicker">${kicker}</div>${
+      rows.length ? rows.map(t=>trackerRow(t, t.isDone?'done':(t===now?'now':'next'))).join('') : `<div class="tracker-empty muted">${emptyMsg}</div>`
+    }</div>`;
+  };
+  el.innerHTML = `
+    <div class="tracker-top">
+      <span class="dot" style="background:${esc(color)}"></span>
+      <h2 title="${esc(p.title)}">📌 ${esc(p.title)}</h2>
+      <span class="muted" style="font-size:12px">${p._pg.done}/${p._pg.total} · ${p._pg.pct}%</span>
+      <button class="btn" data-tk-details title="Open full project details">⧉ Details</button>
+    </div>
+    <div class="tracker-cols">
+      ${col('▶ Current working task', now?[now]:[], p._ts.length ? 'All done — pick the next one in details.' : 'No tasks yet.')}
+      ${col('○ Next in queue · tag + due', next, 'Queue is clear.')}
+      ${col('✓ Recently done', done, 'Nothing completed yet.')}
+    </div>
+    <div><span class="muted" style="font-size:11px">Order: urgent / high tags first, then overdue → today → dated → untagged.</span></div>`;
+  const det = el.querySelector('[data-tk-details]');
+  if(det) det.onclick = ()=>openProject(p.id);
+  el.querySelectorAll('[data-tk-toggle]').forEach(cb=>{
+    cb.onchange = ()=>toggleTask(cb.dataset.tkToggle, cb.checked);
+  });
+  el.querySelectorAll('[data-tk-open]').forEach(ttl=>{
+    ttl.onclick = async ()=>{ try{ await PluginAPI.selectTask(ttl.dataset.tkOpen); }catch(e){ snack('Could not open task','ERROR'); } };
   });
 }
 
 /* ---------- detail ---------- */
-function curProject(){ return state.projects.find(p=>p.id===state.sel); }
+function curProject(){ return state.projects.find(p=>p.id===state.detailId); }
 function openProject(pid){
-  state.sel = pid; state.tagFilter = null; state.msFilter = null; state.hideDoneTasks = false; state.search = ''; state.dtab = 'overview';
+  state.detailId = pid; state.tagFilter = null; state.msFilter = null; state.hideDoneTasks = false; state.search = ''; state.dtab = 'overview';
+  if(!state.sel) state.sel = pid;
   $('fHideDone').checked = false; $('fSearch').value = '';
   $('viewGrid').hidden = true; $('viewDetail').hidden = false;
   paintDtabs();
   renderDetail();
 }
-function closeDetail(){ state.sel = null; $('viewDetail').hidden = true; $('viewGrid').hidden = false; renderGrid(); }
+function closeDetail(){ state.detailId = null; $('viewDetail').hidden = true; $('viewGrid').hidden = false; renderGrid(); }
 function paintDtabs(){
   document.querySelectorAll('#dTabs .dtab').forEach(b=>b.classList.toggle('on', b.dataset.dtab===state.dtab));
   document.querySelectorAll('[data-dpanel]').forEach(p=>{ p.hidden = p.dataset.dpanel!==state.dtab; });
@@ -744,7 +890,8 @@ function renderTaskGroups(p){
 async function toggleTask(id, done){
   const prev = state.tasksMap[id];
   if(prev) prev.isDone = done;
-  renderDetail(); if(!$('viewGrid').hidden) renderGrid();
+  if(state.detailId) renderDetail();
+  if(!$('viewGrid').hidden) renderGrid();
   try { await PluginAPI.updateTask(id, { isDone: done }); }
   catch(e){ if(prev) prev.isDone = !done; snack('Update failed — check plugin permissions','ERROR'); }
   await refresh(true, true);
@@ -752,7 +899,7 @@ async function toggleTask(id, done){
 async function setEstimate(id, hours){
   const ms = Math.max(0, hours)*MS_PER_H;
   if(state.tasksMap[id]) state.tasksMap[id].timeEstimate = ms;
-  renderDetail();
+  if(state.detailId) renderDetail();
   try { await PluginAPI.updateTask(id, { timeEstimate: ms }); }
   catch(e){ snack('Estimate update failed','ERROR'); }
   await refresh(true, true);
@@ -773,8 +920,8 @@ async function refresh(silent, force){
     await loadConfig();
     const ae = document.activeElement;
     const typing = ae && !$('viewDetail').hidden && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && $('viewDetail').contains(ae);
-    if(typing && state.sel && !force) return;
-    if(state.sel) renderDetail(); else renderGrid();
+    if(typing && state.detailId && !force) return;
+    if(state.detailId) renderDetail(); else renderGrid();
   }
   catch(e){ console.error(e); if(!silent) snack('Progress: load failed','ERROR'); }
 }

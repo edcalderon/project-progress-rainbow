@@ -1,7 +1,7 @@
 {
   "id": "project-progress-rainbow",
   "name": "Project Progress Rainbow",
-  "version": "1.4.1",
+  "version": "1.5.2",
   "description": "Per-project progress view with overall bar + auto milestones (epic / tag / [M:Name]), rainbow gradient, theme-aware.",
   "manifestVersion": 1,
   "minSupVersion": "14.0.0",
